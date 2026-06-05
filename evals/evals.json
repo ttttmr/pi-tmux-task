@@ -1,0 +1,35 @@
+{
+  "skill_name": "tmux-task-manager",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "这个项目里我要起一个长期运行的前端开发服务，别阻塞当前回合。请按这个 skill 的后台任务约定来启动，并告诉我后续怎么查看状态和停止它。",
+      "expected_output": "明确这是后台任务管理场景；优先复用共享任务会话；强调 start / inspect / stop 的流程；任务命名有语义；不过度展开 shell 或 tmux 细节。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我准备重新跑一遍 api 服务，task name 想用更有意义一点的名字，比如 api-server。之前可能已经有同名后台任务了。请按这个 skill 的约定说明应该怎么 rerun 旧任务，并保证之后便于观测退出状态。",
+      "expected_output": "体现 concise but meaningful task naming；体现 rerun 时优先复用原 task slot、保持任务身份稳定；必要时再 replace；说明保留可观测性；不过度展开 shell 实现细节。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "一个后台任务提示 'Proceed with migration? [y/N]'，扩展也发了 waiting for input 的通知。请基于这个 skill 说明我现在应该怎么理解这个状态、怎么抓最近输出、怎么继续处理。",
+      "expected_output": "正确解释 input-waiting 语义；建议尽快 inspect；重点体现 notification handling 流程，而不是命令堆砌。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "扩展提示某个后台任务 disappeared from session。请基于这个 skill 解释这是什么意思，哪些情况会发生，下一步该怎么判断是不是预期行为。",
+      "expected_output": "正确解释 disappeared 是任务槽位消失，其底层对应 window-level disappearance，不等同于成功/失败退出；能说明 kill/replace/remove 等常见原因；建议先判断是否预期，再决定是否恢复任务。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "扩展提示某个后台任务 sent a terminal notification。请基于这个 skill 解释这个通知意味着什么，以及 agent 应该如何处理。",
+      "expected_output": "正确解释 terminal notification 是 bell/terminal-level signal，不等于成功/失败；建议 inspect 上下文，再决定是否需要进一步动作。",
+      "files": []
+    }
+  ]
+}

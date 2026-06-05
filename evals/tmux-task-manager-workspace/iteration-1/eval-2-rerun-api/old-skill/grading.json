@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Uses a concise but meaningful window name",
+      "passed": true,
+      "evidence": "Uses 'api-server', which is meaningful and matches the prompt."
+    },
+    {
+      "text": "Explains rerun as replacing the same logical task window",
+      "passed": true,
+      "evidence": "Explicitly describes finding the old window, killing it, and creating a replacement."
+    },
+    {
+      "text": "Preserves observability after exit",
+      "passed": true,
+      "evidence": "Uses remain-on-exit and explains why it helps observe exit state."
+    },
+    {
+      "text": "Avoids overcomplicating the rerun explanation",
+      "passed": false,
+      "evidence": "The answer expands into a full implementation script and detailed shell mechanics."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "Explains terminal notification as a signal rather than a success/failure result",
+      "passed": false,
+      "evidence": "The answer broadens into generic task-event handling and does not cleanly define terminal notification as a bell/terminal-level signal."
+    },
+    {
+      "text": "Recommends inspecting context before acting",
+      "passed": true,
+      "evidence": "Tells the reader to inspect the corresponding task window and recent output."
+    },
+    {
+      "text": "Avoids conflating terminal notification with unrelated event types",
+      "passed": false,
+      "evidence": "Mixes terminal notification with started/exited/waiting/disappeared instead of focusing on the specific notification asked about."
+    }
+  ]
+}

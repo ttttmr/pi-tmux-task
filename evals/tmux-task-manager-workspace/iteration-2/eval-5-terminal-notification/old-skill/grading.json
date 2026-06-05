@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "Explains terminal notification as a signal rather than a success/failure result",
+      "passed": true,
+      "evidence": "Describes it as an active reminder to inspect the task rather than a direct outcome."
+    },
+    {
+      "text": "Recommends inspecting context before acting",
+      "passed": true,
+      "evidence": "Says to inspect the corresponding task/window and recent output first."
+    },
+    {
+      "text": "Keeps the answer focused on the specific notification asked about",
+      "passed": true,
+      "evidence": "Stays focused on the notification and likely next handling steps without drifting into a full event taxonomy."
+    }
+  ]
+}

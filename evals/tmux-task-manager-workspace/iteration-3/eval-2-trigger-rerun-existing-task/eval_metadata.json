@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "trigger-rerun-existing-task",
+  "prompt": "之前那个 api-server 后台任务还在，我想重跑同一个逻辑任务，同时尽量保持任务身份稳定。请告诉我应该怎么做。",
+  "assertions": []
+}

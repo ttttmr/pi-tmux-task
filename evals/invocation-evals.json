@@ -1,0 +1,53 @@
+{
+  "skill_name": "tmux-task-manager",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "trigger-start-background-dev",
+      "should_trigger": true,
+      "prompt": "这个项目里我要起一个长期运行的前端开发服务，别阻塞当前回合。请按后台任务管理的方式处理，并告诉我后续怎么查看状态和停止它。"
+    },
+    {
+      "id": 2,
+      "eval_name": "trigger-rerun-existing-task",
+      "should_trigger": true,
+      "prompt": "之前那个 api-server 后台任务还在，我想重跑同一个逻辑任务，同时尽量保持任务身份稳定。请告诉我应该怎么做。"
+    },
+    {
+      "id": 3,
+      "eval_name": "trigger-input-waiting",
+      "should_trigger": true,
+      "prompt": "一个后台任务提示 Proceed with migration? [y/N]，扩展也发了 waiting for input。现在应该怎么理解这个状态、下一步怎么处理？"
+    },
+    {
+      "id": 4,
+      "eval_name": "trigger-disappeared",
+      "should_trigger": true,
+      "prompt": "扩展提示某个后台任务 disappeared from session。请解释这通常意味着什么，以及怎么判断是不是预期行为。"
+    },
+    {
+      "id": 4.1,
+      "eval_name": "trigger-delay-task",
+      "should_trigger": true,
+      "prompt": "我希望目前这个任务先放一放，10分钟后再继续。请按后台任务管理的方式安排。"
+    },
+    {
+      "id": 4.2,
+      "eval_name": "trigger-recurring-check",
+      "should_trigger": true,
+      "prompt": "请每10分钟检查一次这个状态，如果有结果或变化就提醒我。我希望它作为后台任务持续运行。"
+    },
+    {
+      "id": 5,
+      "eval_name": "no-trigger-generic-tmux-help",
+      "should_trigger": false,
+      "prompt": "给我一份 tmux 常用快捷键速查表，我老记不住复制模式和切窗快捷键。"
+    },
+    {
+      "id": 6,
+      "eval_name": "no-trigger-short-foreground",
+      "should_trigger": false,
+      "prompt": "执行一下 npm test，把结果直接告诉我就行，不用挂后台。"
+    }
+  ]
+}

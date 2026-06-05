@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Explains disappeared as a missing task slot rather than a simple exit result",
+      "passed": true,
+      "evidence": "Treats the event as the task/window no longer being present in the shared session, not just an exit code."
+    },
+    {
+      "text": "Lists plausible causes such as kill, replace, or session/task removal",
+      "passed": true,
+      "evidence": "Mentions kill, replace, session reset, and accidental removal scenarios."
+    },
+    {
+      "text": "Explains how to judge whether the disappearance was expected",
+      "passed": true,
+      "evidence": "Tells the reader to check whether the removal was intentional and whether the task should still exist."
+    },
+    {
+      "text": "Makes the higher-level task meaning clear even if low-level window mechanics are mentioned",
+      "passed": true,
+      "evidence": "Although it uses tmux vocabulary, it still explains the disappearance in terms of the tracked background task no longer being present."
+    }
+  ]
+}

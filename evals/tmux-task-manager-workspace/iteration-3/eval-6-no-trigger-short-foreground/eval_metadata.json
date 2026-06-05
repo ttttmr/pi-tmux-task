@@ -1,0 +1,6 @@
+{
+  "eval_id": 6,
+  "eval_name": "no-trigger-short-foreground",
+  "prompt": "执行一下 npm test，把结果直接告诉我就行，不用挂后台。",
+  "assertions": []
+}

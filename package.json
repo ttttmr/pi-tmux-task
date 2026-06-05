@@ -1,0 +1,54 @@
+{
+  "name": "pi-tmux-task",
+  "version": "0.1.0",
+  "description": "Pi extension for managing long-running background tasks with tmux.",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-skill",
+    "pi",
+    "tmux",
+    "background-tasks",
+    "task-runner",
+    "automation"
+  ],
+  "homepage": "https://github.com/ttttmr/pi-tmux-task#readme",
+  "bugs": {
+    "url": "https://github.com/ttttmr/pi-tmux-task/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ttttmr/pi-tmux-task.git"
+  },
+  "license": "MIT",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "docs",
+    "skills",
+    "src"
+  ],
+  "type": "module",
+  "bin": {
+    "pi-tmux-session-name": "./skills/tmux-task-manager/tmux-session-name.sh",
+    "pi-tmux-task-run": "./skills/tmux-task-manager/tmux-task-run.sh"
+  },
+  "scripts": {
+    "check": "./test/session-name.sh && ./test/tmux-integration.sh && node --experimental-strip-types ./test/context.mjs && node --experimental-strip-types ./test/events.mjs && node --experimental-strip-types ./test/stale.mjs && node --experimental-strip-types ./test/index-functions.mjs && node --experimental-strip-types -e \"import('./src/index.ts')\""
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-tui": "^0.75.4"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  }
+}

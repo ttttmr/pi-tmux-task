@@ -1,0 +1,6 @@
+{
+  "eval_id": 5,
+  "eval_name": "no-trigger-generic-tmux-help",
+  "prompt": "给我一份 tmux 常用快捷键速查表，我老记不住复制模式和切窗快捷键。",
+  "assertions": []
+}

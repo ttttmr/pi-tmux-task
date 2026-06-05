@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Frames the task as background task management rather than generic tmux usage",
+      "passed": true,
+      "evidence": "Leads with keeping the task running without blocking the current turn and treats the session as part of task management."
+    },
+    {
+      "text": "Uses a meaningful task name",
+      "passed": true,
+      "evidence": "Uses `frontend-dev` as a concise and meaningful task name."
+    },
+    {
+      "text": "Reuses the shared task session",
+      "passed": true,
+      "evidence": "Uses PI_TMUX_SESSION and a shared session bootstrap path."
+    },
+    {
+      "text": "Explains start, inspect, and stop flow clearly",
+      "passed": true,
+      "evidence": "Covers startup, status inspection, output capture, attach, and stop flow."
+    },
+    {
+      "text": "Avoids over-detailed tmux implementation focus",
+      "passed": true,
+      "evidence": "Still includes commands, but the answer is shorter and more centered on the lifecycle than the old version."
+    }
+  ]
+}

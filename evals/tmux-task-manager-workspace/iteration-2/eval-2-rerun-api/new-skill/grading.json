@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Uses a concise but meaningful task name",
+      "passed": true,
+      "evidence": "Uses `api-server` and treats it as the stable task identity."
+    },
+    {
+      "text": "Explains rerun as reuse of the same task slot when possible",
+      "passed": true,
+      "evidence": "Directly says to reuse the existing `api-server` task slot instead of creating duplicates."
+    },
+    {
+      "text": "Preserves task identity and underlying window id when practical",
+      "passed": true,
+      "evidence": "Explains that reuse keeps the task identity and underlying window id more stable."
+    },
+    {
+      "text": "Preserves observability after rerun",
+      "passed": true,
+      "evidence": "Connects reuse to more stable observation of success, failure, input waiting, and disappearance."
+    },
+    {
+      "text": "Avoids overcomplicating the rerun explanation",
+      "passed": true,
+      "evidence": "Keeps the response concise and policy-oriented rather than shell-heavy."
+    }
+  ]
+}

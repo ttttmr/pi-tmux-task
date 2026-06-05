@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "rerun-api",
+  "prompt": "我准备重新跑一遍 api 服务，window name 想用更有意义一点的名字，比如 api-server。之前可能已经有同名后台任务了。请按这个 skill 的约定说明应该怎么 replace 旧任务，并保证之后便于观测退出状态。",
+  "assertions": []
+}

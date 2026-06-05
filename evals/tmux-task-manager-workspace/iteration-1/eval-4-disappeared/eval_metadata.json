@@ -1,0 +1,6 @@
+{
+  "eval_id": 4,
+  "eval_name": "disappeared",
+  "prompt": "扩展提示某个 tmux task disappeared from session。请基于这个 skill 解释这是什么意思，哪些情况会发生，下一步该怎么判断是不是预期行为。",
+  "assertions": []
+}

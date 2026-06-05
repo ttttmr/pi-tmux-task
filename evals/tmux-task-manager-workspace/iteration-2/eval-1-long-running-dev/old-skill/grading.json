@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Frames the task as background task management rather than generic tmux usage",
+      "passed": true,
+      "evidence": "Recognizes the goal is to keep a long-running front-end task running without blocking the current turn."
+    },
+    {
+      "text": "Uses a meaningful task name",
+      "passed": true,
+      "evidence": "Uses `frontend-dev` as the task/window name."
+    },
+    {
+      "text": "Reuses the shared task session",
+      "passed": true,
+      "evidence": "Prefers PI_TMUX_SESSION and bootstraps the shared session if needed."
+    },
+    {
+      "text": "Explains start, inspect, and stop flow clearly",
+      "passed": true,
+      "evidence": "Provides startup, status inspection, output capture, and stop guidance."
+    },
+    {
+      "text": "Avoids over-detailed tmux implementation focus",
+      "passed": false,
+      "evidence": "Response is still dominated by a long tmux shell recipe and low-level mechanics."
+    }
+  ]
+}

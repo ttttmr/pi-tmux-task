@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "long-running-dev",
+  "prompt": "这个项目里我要起一个长期运行的前端开发服务，别阻塞当前回合。请按这个 skill 的后台任务约定来启动，并告诉我后续怎么查看状态和停止它。",
+  "assertions": []
+}

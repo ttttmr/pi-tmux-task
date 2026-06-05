@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "Explains terminal notification as a signal rather than a success/failure result",
+      "passed": true,
+      "evidence": "Clearly states that it is a terminal bell/notification signal and not a success/failure conclusion."
+    },
+    {
+      "text": "Recommends inspecting context before acting",
+      "passed": true,
+      "evidence": "Says to inspect recent output/context before deciding next steps."
+    },
+    {
+      "text": "Avoids conflating terminal notification with unrelated event types",
+      "passed": true,
+      "evidence": "Stays focused on the specific meaning and handling of terminal notification."
+    }
+  ]
+}

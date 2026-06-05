@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly identifies waiting-for-input state",
+      "passed": true,
+      "evidence": "Explains that the task is alive but blocked on an interactive prompt."
+    },
+    {
+      "text": "Prioritizes inspecting the existing task before rerunning",
+      "passed": true,
+      "evidence": "Tells the reader not to start a duplicate task and to inspect the existing window first."
+    },
+    {
+      "text": "Keeps focus on handling flow rather than command overload",
+      "passed": true,
+      "evidence": "Centers the answer on the decision flow and uses only a few representative commands."
+    },
+    {
+      "text": "Explains the likely next action clearly",
+      "passed": true,
+      "evidence": "Clearly says to inspect first, then send y/n based on what the prompt means."
+    }
+  ]
+}

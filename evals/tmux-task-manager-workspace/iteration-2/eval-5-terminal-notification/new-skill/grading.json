@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "Explains terminal notification as a signal rather than a success/failure result",
+      "passed": true,
+      "evidence": "Clearly says it is a bell/notification signal, not a success/failure conclusion."
+    },
+    {
+      "text": "Recommends inspecting context before acting",
+      "passed": true,
+      "evidence": "Tells the reader to inspect the existing task and its output before deciding what to do."
+    },
+    {
+      "text": "Uses task-management framing rather than making tmux the main topic",
+      "passed": true,
+      "evidence": "Frames the event around the background task and treats tmux as the implementation detail."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly identifies waiting-for-input state",
+      "passed": true,
+      "evidence": "Clearly describes it as a live task blocked on an interactive prompt."
+    },
+    {
+      "text": "Prioritizes inspecting the existing task before rerunning",
+      "passed": true,
+      "evidence": "Tells the reader to inspect the existing task and avoid creating a duplicate task."
+    },
+    {
+      "text": "Explains likely next actions clearly",
+      "passed": true,
+      "evidence": "Provides a clear inspect-then-decide path for y/n handling."
+    },
+    {
+      "text": "Uses task-management language rather than centering tmux as the topic",
+      "passed": true,
+      "evidence": "Frames the situation around the existing background task and only brings in tmux as the underlying mechanism when needed."
+    }
+  ]
+}

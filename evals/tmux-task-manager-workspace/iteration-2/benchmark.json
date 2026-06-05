@@ -1,0 +1,125 @@
+{
+  "skill_name": "tmux-task-manager",
+  "iteration": 2,
+  "configs": [
+    {
+      "name": "new-skill",
+      "pass_rate": 1,
+      "passed": 21,
+      "total": 21,
+      "total_tokens": 78628,
+      "duration_ms": 192533
+    },
+    {
+      "name": "old-skill",
+      "pass_rate": 0.9524,
+      "passed": 20,
+      "total": 21,
+      "total_tokens": 57249,
+      "duration_ms": 194499
+    }
+  ],
+  "evals": [
+    {
+      "eval_name": "long-running-dev",
+      "results": [
+        {
+          "config": "old-skill",
+          "passed": 4,
+          "total": 5,
+          "duration_ms": 88200,
+          "total_tokens": 26800
+        },
+        {
+          "config": "new-skill",
+          "passed": 5,
+          "total": 5,
+          "duration_ms": 70000,
+          "total_tokens": 9300
+        }
+      ]
+    },
+    {
+      "eval_name": "rerun-api",
+      "results": [
+        {
+          "config": "old-skill",
+          "passed": 5,
+          "total": 5,
+          "duration_ms": 27600,
+          "total_tokens": 3100
+        },
+        {
+          "config": "new-skill",
+          "passed": 5,
+          "total": 5,
+          "duration_ms": 34600,
+          "total_tokens": 12500
+        }
+      ]
+    },
+    {
+      "eval_name": "input-waiting",
+      "results": [
+        {
+          "config": "old-skill",
+          "passed": 4,
+          "total": 4,
+          "duration_ms": 28679,
+          "total_tokens": 12347
+        },
+        {
+          "config": "new-skill",
+          "passed": 4,
+          "total": 4,
+          "duration_ms": 43487,
+          "total_tokens": 31624
+        }
+      ]
+    },
+    {
+      "eval_name": "disappeared",
+      "results": [
+        {
+          "config": "old-skill",
+          "passed": 4,
+          "total": 4,
+          "duration_ms": 21332,
+          "total_tokens": 2958
+        },
+        {
+          "config": "new-skill",
+          "passed": 4,
+          "total": 4,
+          "duration_ms": 23210,
+          "total_tokens": 22265
+        }
+      ]
+    },
+    {
+      "eval_name": "terminal-notification",
+      "results": [
+        {
+          "config": "old-skill",
+          "passed": 3,
+          "total": 3,
+          "duration_ms": 29688,
+          "total_tokens": 12044
+        },
+        {
+          "config": "new-skill",
+          "passed": 3,
+          "total": 3,
+          "duration_ms": 21236,
+          "total_tokens": 2939
+        }
+      ]
+    }
+  ],
+  "analyst_observations": [
+    "After reframing the skill as background task management rather than tmux usage, the new skill consistently produced more task-centric answers.",
+    "The largest visible difference is in long-running-dev, where the new skill reduced low-level tmux emphasis and kept the answer closer to lifecycle guidance.",
+    "The old skill still performs strongly on many evals because its body had already moved toward workflow guidance, but it retains more tmux-centric phrasing.",
+    "The current new skill is better aligned with the intended product positioning even where raw pass-rate differences are small."
+  ]
+}

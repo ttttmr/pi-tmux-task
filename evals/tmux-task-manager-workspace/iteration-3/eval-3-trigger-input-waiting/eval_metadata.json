@@ -1,0 +1,6 @@
+{
+  "eval_id": 3,
+  "eval_name": "trigger-input-waiting",
+  "prompt": "一个后台任务提示 Proceed with migration? [y/N]，扩展也发了 waiting for input。现在应该怎么理解这个状态、下一步怎么处理？",
+  "assertions": []
+}

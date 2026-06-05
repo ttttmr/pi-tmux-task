@@ -1,0 +1,6 @@
+{
+  "eval_id": 5,
+  "eval_name": "terminal-notification",
+  "prompt": "扩展提示某个后台任务 sent a terminal notification。请基于这个 skill 解释这个通知意味着什么，以及 agent 应该如何处理。",
+  "assertions": []
+}

@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Explains disappeared as a missing task slot rather than a simple exit result",
+      "passed": true,
+      "evidence": "Describes the event as the previously observed background task slot no longer being present."
+    },
+    {
+      "text": "Lists plausible causes such as kill, replace, or session/task removal",
+      "passed": true,
+      "evidence": "Covers intended stop, replace, rerun without reuse, session rebuild, and manual removal."
+    },
+    {
+      "text": "Explains how to judge whether the disappearance was expected",
+      "passed": true,
+      "evidence": "Says to check whether the task still exists under another identity and whether it should have persisted."
+    },
+    {
+      "text": "Makes the higher-level task meaning clear even if low-level window mechanics are mentioned",
+      "passed": true,
+      "evidence": "Frames it first as a background task slot disappearing, then clarifies the underlying window-level implementation detail."
+    }
+  ]
+}

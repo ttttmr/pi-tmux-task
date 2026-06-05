@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Uses a concise but meaningful window name",
+      "passed": true,
+      "evidence": "Uses 'api-server', which is meaningful and stable for this logical task."
+    },
+    {
+      "text": "Explains rerun as replacing the same logical task window",
+      "passed": true,
+      "evidence": "Clearly frames rerun as replacing the old same-name window rather than making duplicates."
+    },
+    {
+      "text": "Preserves observability after exit",
+      "passed": true,
+      "evidence": "Explicitly says to preserve observability after exit when possible."
+    },
+    {
+      "text": "Avoids overcomplicating the rerun explanation",
+      "passed": true,
+      "evidence": "Keeps the answer at the rule-and-flow level instead of dropping into a long shell template."
+    }
+  ]
+}

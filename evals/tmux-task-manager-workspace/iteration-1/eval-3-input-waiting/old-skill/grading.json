@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly identifies waiting-for-input state",
+      "passed": true,
+      "evidence": "Explains that the task is blocked on interactive confirmation rather than finished or crashed."
+    },
+    {
+      "text": "Prioritizes inspecting the existing task before rerunning",
+      "passed": true,
+      "evidence": "Advises capturing output from the existing task and not creating a duplicate task first."
+    },
+    {
+      "text": "Keeps focus on handling flow rather than command overload",
+      "passed": false,
+      "evidence": "Provides a fairly command-heavy answer with multiple shell snippets and low-level detail."
+    },
+    {
+      "text": "Explains the likely next action clearly",
+      "passed": true,
+      "evidence": "Says to inspect the prompt and then decide whether to continue by providing input."
+    }
+  ]
+}

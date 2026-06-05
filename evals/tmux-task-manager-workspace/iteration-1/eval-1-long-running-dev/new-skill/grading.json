@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Uses tmux for a long-running non-blocking task",
+      "passed": true,
+      "evidence": "Clearly chooses a project-scoped tmux session for a long-running service."
+    },
+    {
+      "text": "Reuses PI_TMUX_SESSION or falls back consistently",
+      "passed": true,
+      "evidence": "Explicitly prefers PI_TMUX_SESSION and mentions the fallback helper."
+    },
+    {
+      "text": "Uses a meaningful window name",
+      "passed": true,
+      "evidence": "Chooses 'frontend-dev', which is concise and meaningful."
+    },
+    {
+      "text": "Keeps the answer focused on workflow rather than long shell detail",
+      "passed": true,
+      "evidence": "Explains the flow and only includes compact commands, avoiding a bulky tmux recipe."
+    },
+    {
+      "text": "Explains how to inspect and stop the task",
+      "passed": true,
+      "evidence": "Describes listing windows, attaching/capturing output, and killing the window/session."
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+[
+  {
+    "id": 1,
+    "query": "这个项目里我要把前端 dev server 挂到后台跑着，别卡住当前回合。你按这个项目约定处理一下。",
+    "should_trigger": true,
+    "reason": "Long-running background dev server in current project."
+  },
+  {
+    "id": 2,
+    "query": "帮我把 api 服务放到 tmux 里持续跑，后面我还要继续改代码，不想被它阻塞。",
+    "should_trigger": true,
+    "reason": "Explicit request for tmux and non-blocking long-running service."
+  },
+  {
+    "id": 3,
+    "query": "我想在这个仓库里开一个长期的 watch 任务，比如测试持续监听，任务名要清楚一点。",
+    "should_trigger": true,
+    "reason": "Watch task that should remain running in background with naming guidance."
+  },
+  {
+    "id": 4,
+    "query": "有个依赖扫描要跑很久，你别在前台等结果，按项目里的后台任务约定起起来。",
+    "should_trigger": true,
+    "reason": "Long-running scan explicitly needs background task convention."
+  },
+  {
+    "id": 5,
+    "query": "我要长期 tail 一下这个服务日志，但还得继续让你做别的事，适合挂后台。",
+    "should_trigger": true,
+    "reason": "Long-running log tail / monitoring loop."
+  },
+  {
+    "id": 6,
+    "query": "之前那个 api-server 任务还在，我想重跑同一个逻辑任务，但尽量保持它的 tmux 身份稳定。",
+    "should_trigger": true,
+    "reason": "Rerun semantics for existing tmux-backed task in this project."
+  },
+  {
+    "id": 7,
+    "query": "扩展提示 tmux task is waiting for input，你按这个项目的约定判断下一步该怎么处理。",
+    "should_trigger": true,
+    "reason": "Task-state notification handling is core to the skill."
+  },
+  {
+    "id": 8,
+    "query": "同一个项目里我想并行挂几个长期任务：frontend-dev、api-server、worker-sync。你按统一 tmux 约定来安排。",
+    "should_trigger": true,
+    "reason": "Multiple concurrent long-running tasks under shared project tmux session."
+  },
+  {
+    "id": 9,
+    "query": "tmux 里那个后台任务突然 disappeared from session 了，帮我按这个仓库的规则判断是不是预期行为。",
+    "should_trigger": true,
+    "reason": "Disappeared notification semantics are part of this skill."
+  },
+  {
+    "id": 10,
+    "query": "给我一个适合这个仓库的后台任务命名方式，我准备把 migrate 和 scan 都丢到 tmux 里长期跑。",
+    "should_trigger": true,
+    "reason": "Meaningful naming for project-scoped tmux tasks."
+  },
+  {
+    "id": 10.1,
+    "query": "我希望目前这个后台任务先停一下，10分钟后再继续处理。你按后台任务管理的方式帮我安排。",
+    "should_trigger": true,
+    "reason": "One-shot delayed continuation is part of background task management."
+  },
+  {
+    "id": 10.2,
+    "query": "每10分钟检查一次这个状态，如果有变化就提醒我。这个适合放到后台长期跑。",
+    "should_trigger": true,
+    "reason": "Recurring periodic background checking with notifications should trigger the skill."
+  },
+  {
+    "id": 11,
+    "query": "帮我看看 tmux 怎么安装，顺便解释一下 session、window、pane 分别是什么。",
+    "should_trigger": false,
+    "reason": "General tmux education, not this project's task convention."
+  },
+  {
+    "id": 12,
+    "query": "给我一份 tmux 常用快捷键速查表，我总是记不住复制模式怎么进。",
+    "should_trigger": false,
+    "reason": "Generic tmux usage help, not project-specific background-task workflow."
+  },
+  {
+    "id": 13,
+    "query": "执行一下 npm test，把结果直接告诉我就行，不用挂后台。",
+    "should_trigger": false,
+    "reason": "Short foreground one-shot command."
+  },
+  {
+    "id": 14,
+    "query": "请帮我修一下这个 TypeScript 类型错误，先不要跑任何长期任务。",
+    "should_trigger": false,
+    "reason": "Pure code editing/debugging without background process management."
+  },
+  {
+    "id": 15,
+    "query": "我想杀掉我电脑上所有 tmux session，顺便帮我清理干净。",
+    "should_trigger": false,
+    "reason": "Global tmux administration, not project-scoped session convention."
+  },
+  {
+    "id": 16,
+    "query": "给我解释一下为什么这个 shell 命令里的 awk 不工作。",
+    "should_trigger": false,
+    "reason": "Generic shell debugging."
+  },
+  {
+    "id": 17,
+    "query": "把这个 cronjob 改成每天凌晨三点执行，不需要 tmux。",
+    "should_trigger": false,
+    "reason": "Scheduling config, not interactive project tmux task management."
+  },
+  {
+    "id": 18,
+    "query": "帮我 attach 到一个远程服务器上的 tmux session 看看发生了什么。",
+    "should_trigger": false,
+    "reason": "General remote tmux inspection, not local project-scoped skill behavior."
+  },
+  {
+    "id": 19,
+    "query": "我需要你现在就跑一遍数据库迁移并把输出贴给我，不要后台。",
+    "should_trigger": false,
+    "reason": "Immediate foreground execution explicitly requested."
+  },
+  {
+    "id": 20,
+    "query": "扩展 UI 里那个 tasks panel 看起来不太对，帮我改一下界面渲染。",
+    "should_trigger": false,
+    "reason": "Extension UI implementation task, not tmux-task operating workflow."
+  },
+  {
+    "id": 21,
+    "query": "这个项目的前端 dev server 我想长期跑，不过别用 tmux，给我一个 nohup 或后台重定向方案就行。",
+    "should_trigger": false,
+    "reason": "Backgrounding is requested, but user explicitly chooses a non-tmux mechanism."
+  },
+  {
+    "id": 22,
+    "query": "我在生产机上有个 tmux session 叫 prod-api，帮我远程 attach 上去排查一下，不涉及本地项目约定。",
+    "should_trigger": false,
+    "reason": "Remote/production tmux inspection, not current project-scoped task handling."
+  },
+  {
+    "id": 23,
+    "query": "这个仓库我想长期跑三个服务，但最后准备交给 systemd 管，不打算用 tmux。你先帮我设计一下。",
+    "should_trigger": false,
+    "reason": "Long-running processes are relevant, but the chosen mechanism is explicitly not tmux."
+  },
+  {
+    "id": 24,
+    "query": "解释一下 tmux 的 bell 是怎么工作的，为什么有时候会响一下。",
+    "should_trigger": false,
+    "reason": "Generic tmux concept help, not this project's task notification workflow."
+  },
+  {
+    "id": 25,
+    "query": "帮我改一下这个扩展的 poller 代码，让 disappeared 和 started 的判定更合理。",
+    "should_trigger": false,
+    "reason": "This is extension implementation work, not using the skill's tmux workflow as an operator."
+  },
+  {
+    "id": 26,
+    "query": "我只想知道为什么 tmux window id 会变化，不需要你按项目约定管理任务。",
+    "should_trigger": false,
+    "reason": "Generic tmux behavior explanation."
+  },
+  {
+    "id": 27,
+    "query": "把这个长命令直接在当前终端跑起来吧，我会等，不需要后台也不需要 tmux。",
+    "should_trigger": false,
+    "reason": "Explicitly rejects backgrounding and tmux."
+  },
+  {
+    "id": 28,
+    "query": "我想要一段 shell 脚本，自动把 tmux 里所有名字带 api 的 window 都杀掉。",
+    "should_trigger": false,
+    "reason": "Generic tmux scripting/admin task, not project-scoped task lifecycle guidance."
+  },
+  {
+    "id": 29,
+    "query": "这个项目里有个后台任务失败了，不过我现在只想修代码，不想讨论 tmux 怎么处理。",
+    "should_trigger": false,
+    "reason": "Mentions background task context, but explicitly deprioritizes tmux-task handling."
+  },
+  {
+    "id": 30,
+    "query": "帮我写个 README，解释团队为什么喜欢用 tmux 管理开发环境。",
+    "should_trigger": false,
+    "reason": "Conceptual/documentation writing about tmux, not operating this project's task convention."
+  }
+]

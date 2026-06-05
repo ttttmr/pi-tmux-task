@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Uses a concise but meaningful task name",
+      "passed": true,
+      "evidence": "Uses `api-server` and explains why it is a stable, meaningful identity."
+    },
+    {
+      "text": "Explains rerun as reuse of the same task slot when possible",
+      "passed": true,
+      "evidence": "Says to reuse the existing slot/window rather than create duplicates."
+    },
+    {
+      "text": "Preserves task identity and underlying window id when practical",
+      "passed": true,
+      "evidence": "Explicitly mentions keeping identity stable and preserving the window id when possible."
+    },
+    {
+      "text": "Preserves observability after rerun",
+      "passed": true,
+      "evidence": "Explains why stable identity makes exit/failure/input/disappearance easier to track."
+    },
+    {
+      "text": "Avoids overcomplicating the rerun explanation",
+      "passed": true,
+      "evidence": "Stays at the rule-and-flow level without expanding into a large shell recipe."
+    }
+  ]
+}

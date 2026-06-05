@@ -1,0 +1,6 @@
+{
+  "eval_id": 3,
+  "eval_name": "input-waiting",
+  "prompt": "tmux 里一个后台任务提示 'Proceed with migration? [y/N]'，扩展也发了 waiting for input 的通知。请基于这个 skill 说明我现在应该怎么理解这个状态、怎么抓最近输出、怎么继续处理。",
+  "assertions": []
+}

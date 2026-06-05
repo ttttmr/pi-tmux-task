@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Uses tmux for a long-running non-blocking task",
+      "passed": true,
+      "evidence": "Starts the task in tmux and explains it should not block the current turn."
+    },
+    {
+      "text": "Reuses PI_TMUX_SESSION or falls back consistently",
+      "passed": true,
+      "evidence": "Shows fallback logic for PI_TMUX_SESSION and session bootstrap."
+    },
+    {
+      "text": "Uses a meaningful window name",
+      "passed": false,
+      "evidence": "Uses generic name 'web' instead of a more meaningful task name."
+    },
+    {
+      "text": "Keeps the answer focused on workflow rather than long shell detail",
+      "passed": false,
+      "evidence": "Response is dominated by a long shell template and detailed implementation steps."
+    },
+    {
+      "text": "Explains how to inspect and stop the task",
+      "passed": true,
+      "evidence": "Includes list-panes/list-windows, capture-pane, and kill-window follow-up guidance."
+    }
+  ]
+}

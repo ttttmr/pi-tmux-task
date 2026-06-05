@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly identifies waiting-for-input state",
+      "passed": true,
+      "evidence": "Explains that the task is still alive but blocked on an interactive confirmation prompt."
+    },
+    {
+      "text": "Prioritizes inspecting the existing task before rerunning",
+      "passed": true,
+      "evidence": "Says to inspect the existing task/window before restarting anything."
+    },
+    {
+      "text": "Explains likely next actions clearly",
+      "passed": true,
+      "evidence": "Describes checking context and then sending y/n or Enter depending on intent."
+    },
+    {
+      "text": "Avoids command overload and keeps focus on flow",
+      "passed": true,
+      "evidence": "Uses a few commands, but the answer remains centered on the decision flow."
+    }
+  ]
+}

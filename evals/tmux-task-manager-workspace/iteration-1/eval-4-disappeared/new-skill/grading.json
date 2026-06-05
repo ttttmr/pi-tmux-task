@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Explains disappeared as a window-level disappearance",
+      "passed": true,
+      "evidence": "Directly describes it as a previously observed tmux window no longer being present in the session."
+    },
+    {
+      "text": "Lists plausible causes such as kill, replace, or session/window removal",
+      "passed": true,
+      "evidence": "Covers intentional kill/replace/remove and session rebuild scenarios."
+    },
+    {
+      "text": "Explains how to judge whether the disappearance was expected",
+      "passed": true,
+      "evidence": "Tells the reader to check whether the logical task still exists in another window and whether the disappearance was intentional."
+    },
+    {
+      "text": "Avoids treating disappeared as success/failure",
+      "passed": true,
+      "evidence": "Clearly says not to infer a normal process result from the disappearance event."
+    }
+  ]
+}

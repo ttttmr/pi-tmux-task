@@ -1,0 +1,6 @@
+{
+  "eval_id": 4,
+  "eval_name": "trigger-disappeared",
+  "prompt": "扩展提示某个后台任务 disappeared from session。请解释这通常意味着什么，以及怎么判断是不是预期行为。",
+  "assertions": []
+}

@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Explains disappeared as a window-level disappearance",
+      "passed": true,
+      "evidence": "States that the old task window instance is no longer in the tmux session rather than calling it a normal exit."
+    },
+    {
+      "text": "Lists plausible causes such as kill, replace, or session/window removal",
+      "passed": true,
+      "evidence": "Mentions kill-window, replace flow, session rebuild/cleanup, and other window-removal cases."
+    },
+    {
+      "text": "Explains how to judge whether the disappearance was expected",
+      "passed": true,
+      "evidence": "Recommends checking whether the task was intentionally restarted or replaced and whether a same-name window with a new id exists."
+    },
+    {
+      "text": "Avoids treating disappeared as success/failure",
+      "passed": true,
+      "evidence": "Explicitly distinguishes disappeared from exit-code notifications."
+    }
+  ]
+}
