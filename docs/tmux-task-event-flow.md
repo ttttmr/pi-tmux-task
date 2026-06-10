@@ -187,13 +187,14 @@ Delivery:
 - conversation message: yes
 - agent turn: yes, as `followUp`
 
-Message:
+Messages:
 
 ```text
 tmux task @12 (task-name) disappeared from session
+tmux task @12 (task-name) disappeared from session after the user manually killed it
 ```
 
-Dead-window cleanup does not produce `disappeared`.
+When a window is killed from the `/tmux-tasks` panel, the extension records that `windowId` and annotates the next matching `disappeared` event as user-initiated. Dead-window cleanup does not produce `disappeared`.
 
 ## Delivery rules
 
@@ -212,7 +213,7 @@ Delivery matrix:
 |---|---|---|
 | only `started` | `ctx.ui.notify(...)` | No |
 | `exited` / `notify` / `input` / `disappeared` | `pi.sendMessage(...)` with `[tmux-task notification]` | Yes, as `followUp` |
-| historical active sessions at startup | `ctx.ui.notify(...)` | No |
+| historical active sessions at startup | `ctx.ui.notify(...)`, enriched with Pi session display name/title when available | No |
 | stale inactive cleanup at startup | `ctx.ui.notify(...)` | No |
 | `/tmux-tasks` TUI actions | panel UI or `ctx.ui.notify(...)` | No |
 

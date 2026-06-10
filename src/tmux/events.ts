@@ -5,7 +5,7 @@ export type TmuxTaskEvent =
   | { type: "exited"; task: TmuxTaskSnapshot }
   | { type: "notify"; task: TmuxTaskSnapshot }
   | { type: "input"; task: TmuxTaskSnapshot; prompt: string }
-  | { type: "disappeared"; previous: TmuxTaskSnapshot };
+  | { type: "disappeared"; previous: TmuxTaskSnapshot; reason?: "user-killed" };
 
 function toTaskMap(snapshot: TmuxSnapshot): Map<string, TmuxTaskSnapshot> {
   return new Map(snapshot.tasks.map((task) => [task.windowId, task]));
@@ -177,6 +177,7 @@ export function formatTmuxTaskEvent(event: TmuxTaskEvent): string {
     case "input":
       return `tmux task ${formatTaskRef(event.task)} is waiting for input: ${event.prompt}`;
     case "disappeared":
+      if (event.reason === "user-killed") return `tmux task ${formatTaskRef(event.previous)} disappeared from session after the user manually killed it`;
       return `tmux task ${formatTaskRef(event.previous)} disappeared from session`;
   }
 }

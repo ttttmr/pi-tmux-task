@@ -162,8 +162,13 @@ assert.equal(filtered.events.length, 0);
 events = diffTmuxSnapshots(snapshot([task({ windowId: '@2', windowName: 'api' })]), snapshot([]));
 assert.equal(events.length, 1);
 assert.equal(events[0].type, 'disappeared');
+assert.equal(formatTmuxTaskEvents(events), `${eventHeader}\ntmux task @2 (api) disappeared from session`);
 assert.equal(getTmuxTaskEventLevel(events), 'warning');
 assert.equal(shouldTriggerTurnForTmuxTaskEvents(events), true);
+
+// disappeared after a user-initiated kill is explicit in the message
+events = [{ ...events[0], reason: 'user-killed' }];
+assert.equal(formatTmuxTaskEvents(events), `${eventHeader}\ntmux task @2 (api) disappeared from session after the user manually killed it`);
 
 // dead task cleanup is expected and should not produce a disappeared notification
 events = diffTmuxSnapshots(snapshot([task({ windowId: '@2', windowName: 'api', dead: true, exitCode: 0 })]), snapshot([]));

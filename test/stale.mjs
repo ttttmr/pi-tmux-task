@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+  attachPiSessionTitlesToStaleTmuxSessions,
   filterSameProjectTmuxSessions,
   formatStaleTmuxSessionNotice,
+  piSessionIdFromTmuxSessionName,
   summarizeStaleTmuxSessions,
 } from '../src/tmux/stale.ts';
 
@@ -56,6 +58,60 @@ assert.deepEqual(plan.active, [
   },
 ]);
 
+assert.equal(piSessionIdFromTmuxSessionName('pi-repo-019eb012-5374-7a2d-b977-8ea7a3c95b45', 'repo'), '019eb012-5374-7a2d-b977-8ea7a3c95b45');
+assert.equal(piSessionIdFromTmuxSessionName('pi-other-019eb012-5374-7a2d-b977-8ea7a3c95b45', 'repo'), undefined);
+
+const activeWithPiSessionTitle = attachPiSessionTitlesToStaleTmuxSessions(
+  [
+    {
+      sessionName: 'pi-repo-aaa',
+      activeCount: 1,
+      deadCount: 0,
+      taskNames: ['web'],
+    },
+    {
+      sessionName: 'pi-repo-bbb',
+      activeCount: 1,
+      deadCount: 0,
+      taskNames: ['api'],
+    },
+    {
+      sessionName: 'pi-repo-ccc',
+      activeCount: 1,
+      deadCount: 0,
+      taskNames: ['worker'],
+    },
+  ],
+  'repo',
+  [
+    { id: 'aaa', name: 'Admin split' },
+    { id: 'bbb', firstMessage: 'Continue chat reminder' },
+    { id: 'ccc', name: '   ', firstMessage: '(no messages)' },
+  ],
+);
+assert.deepEqual(activeWithPiSessionTitle, [
+  {
+    sessionName: 'pi-repo-aaa',
+    activeCount: 1,
+    deadCount: 0,
+    taskNames: ['web'],
+    piSessionTitle: { id: 'aaa', title: 'Admin split', source: 'name' },
+  },
+  {
+    sessionName: 'pi-repo-bbb',
+    activeCount: 1,
+    deadCount: 0,
+    taskNames: ['api'],
+    piSessionTitle: { id: 'bbb', title: 'Continue chat reminder', source: 'title' },
+  },
+  {
+    sessionName: 'pi-repo-ccc',
+    activeCount: 1,
+    deadCount: 0,
+    taskNames: ['worker'],
+  },
+]);
+
 assert.equal(formatStaleTmuxSessionNotice('repo', 0, []), undefined);
 assert.equal(formatStaleTmuxSessionNotice('repo', 2, []), 'Cleaned 2 inactive tmux task session(s) for repo.');
 assert.equal(
@@ -76,6 +132,14 @@ assert.equal(
     },
   ]),
   ['Existing tmux task session(s) for repo still have active tasks:', '- many: 4 active (a, b, c, +1 more)'].join('\n'),
+);
+assert.equal(
+  formatStaleTmuxSessionNotice('repo', 0, activeWithPiSessionTitle.slice(0, 2)),
+  [
+    'Existing tmux task session(s) for repo still have active tasks:',
+    '- pi-repo-aaa (Admin split): 1 active (web)',
+    '- pi-repo-bbb (Continue chat reminder): 1 active (api)',
+  ].join('\n'),
 );
 
 console.log('stale session tests passed');

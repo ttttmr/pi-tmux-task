@@ -116,6 +116,7 @@ No tmux task session is created just by loading the package.
 7. It scans same-project historical tmux sessions:
    - no active tasks → kill the inactive tmux session;
    - active tasks → leave it running and notify the user via `ctx.ui.notify(...)`.
+8. When possible, it enriches active historical-session notices with the matching Pi session display name, or the first user message as a title fallback.
 
 Historical-session notices are **UI-only**. They are not sent with `pi.sendMessage(...)`, so they do not trigger an agent turn.
 
@@ -368,6 +369,7 @@ This model avoids killing running work just because Pi or a Paseo-managed agent 
 - The helper must be used for managed tasks; ad-hoc tmux sessions are not part of the product contract.
 - The active poller observes one tmux session only.
 - Historical-session cleanup scans by `pi-<project-slug>-` prefix only.
+- Historical active-session notices show the Pi session display name/title only when the matching session metadata can be found.
 - `project-slug` is basename-based, so same-basename projects may share historical cleanup/notice scope.
 - The first snapshot is a baseline, not a replay of old events.
 - Multi-pane windows are best-effort; the first matching pane is treated as primary.

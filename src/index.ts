@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
+import { isToolCallEventType, SessionManager } from "@earendil-works/pi-coding-agent";
 import type { TmuxSnapshot, TmuxTaskSnapshot } from "./types.ts";
 import { computeTmuxSessionName, projectSlugForPath } from "./context.ts";
 import {
@@ -14,7 +14,13 @@ import {
 import { startTmuxPoller, type TmuxPollerHandle } from "./tmux/poller.ts";
 import { tmuxInstallBellHook, tmuxKillSession, tmuxKillWindowById, tmuxListSessions } from "./tmux/commands.ts";
 import { collectTmuxSnapshot } from "./tmux/snapshot.ts";
-import { filterSameProjectTmuxSessions, formatStaleTmuxSessionNotice, summarizeStaleTmuxSessions } from "./tmux/stale.ts";
+import {
+  attachPiSessionTitlesToStaleTmuxSessions,
+  filterSameProjectTmuxSessions,
+  formatStaleTmuxSessionNotice,
+  type PiSessionTitleSource,
+  summarizeStaleTmuxSessions,
+} from "./tmux/stale.ts";
 import { showTmuxTasksPanel } from "./ui/tasks-panel.ts";
 
 type ManagedSession = {
@@ -22,6 +28,7 @@ type ManagedSession = {
   sessionName: string;
   previousSnapshot: TmuxSnapshot | undefined;
   notifiedInputs: Map<string, string>;
+  manuallyKilledWindowIds: Set<string>;
   bellHookInstalled: boolean;
 };
 
@@ -88,7 +95,7 @@ function eventDetails(event: TmuxTaskEvent) {
     case "input":
       return { type: event.type, prompt: event.prompt, task: taskDetails(event.task) };
     case "disappeared":
-      return { type: event.type, previous: taskDetails(event.previous) };
+      return { type: event.type, reason: event.reason, previous: taskDetails(event.previous) };
   }
 }
 
@@ -113,6 +120,14 @@ function removeTasksFromSnapshot(snapshot: TmuxSnapshot | undefined, windowIds: 
     ...snapshot,
     tasks: snapshot.tasks.filter((task) => !windowIds.has(task.windowId)),
   };
+}
+
+export function annotateManualKillEvents(events: TmuxTaskEvent[], manuallyKilledWindowIds: Set<string>): TmuxTaskEvent[] {
+  return events.map((event) => {
+    if (event.type !== "disappeared" || !manuallyKilledWindowIds.has(event.previous.windowId)) return event;
+    manuallyKilledWindowIds.delete(event.previous.windowId);
+    return { ...event, reason: "user-killed" as const };
+  });
 }
 
 async function pruneDeadTaskWindows(tasks: TmuxTaskSnapshot[]): Promise<Set<string>> {
@@ -163,6 +178,7 @@ function ensureManagedSession(ctx: ExtensionContext): ManagedSession {
     sessionName: sessionNameFor(ctx),
     previousSnapshot: undefined,
     notifiedInputs: new Map<string, string>(),
+    manuallyKilledWindowIds: new Set<string>(),
     bellHookInstalled: false,
   };
   runtime.sessions.set(sessionId, session);
@@ -188,6 +204,19 @@ function staleNoticeStateFor(projectSlug: string): StaleSessionNoticeState {
   return state;
 }
 
+async function listPiSessionTitleSources(ctx: ExtensionContext): Promise<PiSessionTitleSource[]> {
+  try {
+    const sessions = await SessionManager.list(ctx.cwd, ctx.sessionManager.getSessionDir());
+    return sessions.map((session) => ({
+      id: session.id,
+      name: session.name,
+      firstMessage: session.firstMessage,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 async function cleanAndNotifyStaleProjectSessions(ctx: ExtensionContext, currentSessionName: string): Promise<void> {
   const projectSlug = projectSlugForPath(ctx.cwd);
   const noticeState = staleNoticeStateFor(projectSlug);
@@ -200,10 +229,14 @@ async function cleanAndNotifyStaleProjectSessions(ctx: ExtensionContext, current
   const cleanupResults = await Promise.all(plan.inactive.map(async (sessionName) => ({ sessionName, ok: await tmuxKillSession(sessionName) })));
   const cleaned = cleanupResults.filter((result) => result.ok).map((result) => result.sessionName);
 
-  for (const sessionName of cleaned) noticeState.inactive.add(sessionName);
-  for (const summary of plan.active) noticeState.active.add(summary.sessionName);
+  const active = plan.active.length > 0
+    ? attachPiSessionTitlesToStaleTmuxSessions(plan.active, projectSlug, await listPiSessionTitleSources(ctx))
+    : plan.active;
 
-  const notice = formatStaleTmuxSessionNotice(projectSlug, cleaned.length, plan.active);
+  for (const sessionName of cleaned) noticeState.inactive.add(sessionName);
+  for (const summary of active) noticeState.active.add(summary.sessionName);
+
+  const notice = formatStaleTmuxSessionNotice(projectSlug, cleaned.length, active);
   if (notice) ctx.ui.notify(notice, plan.active.length > 0 ? "warning" : "info");
 }
 
@@ -218,7 +251,7 @@ async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, ses
 
   if (runtime.activeSessionId !== session.sessionId) return;
 
-  const rawEvents = diffTmuxSnapshots(session.previousSnapshot, snapshot);
+  const rawEvents = annotateManualKillEvents(diffTmuxSnapshots(session.previousSnapshot, snapshot), session.manuallyKilledWindowIds);
   session.previousSnapshot = snapshot;
 
   const { events, nextNotifiedInputs } = filterRepeatedInputEvents(rawEvents, snapshot, session.notifiedInputs);
@@ -379,7 +412,11 @@ export default function (pi: ExtensionAPI) {
           return;
         }
 
+        for (const task of snapshot.tasks) session.manuallyKilledWindowIds.add(task.windowId);
         const ok = await tmuxKillSession(sessionName);
+        if (!ok) {
+          for (const task of snapshot.tasks) session.manuallyKilledWindowIds.delete(task.windowId);
+        }
         runtime.sessions.delete(session.sessionId);
         const content = ok ? `Killed tmux task session ${sessionName}.` : `Failed to kill tmux task session ${sessionName}.`;
         if (ctx.hasUI) ctx.ui.notify(content, ok ? "info" : "warning");
@@ -410,6 +447,8 @@ export default function (pi: ExtensionAPI) {
         sessionName,
         initialSnapshot: snapshot,
         refresh,
+        onManualKill: (task) => session.manuallyKilledWindowIds.add(task.windowId),
+        onManualKillFailed: (task) => session.manuallyKilledWindowIds.delete(task.windowId),
       });
     },
   });

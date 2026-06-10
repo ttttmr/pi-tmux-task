@@ -9,6 +9,8 @@ type ShowTmuxTasksPanelOptions = {
   sessionName: string;
   initialSnapshot: TmuxSnapshot;
   refresh: () => Promise<TmuxSnapshot>;
+  onManualKill?: (task: TmuxTaskSnapshot) => void;
+  onManualKillFailed?: (task: TmuxTaskSnapshot) => void;
 };
 
 function formatTaskRef(task: TmuxTaskSnapshot): string {
@@ -132,6 +134,14 @@ function renderTaskTable(tasks: TmuxTaskSnapshot[], selectedIndex: number, width
   return lines;
 }
 
+function renderKillConfirmation(task: TmuxTaskSnapshot, width: number, theme: any): string[] {
+  return [
+    makeSectionHeader("confirm kill", width, theme),
+    makeContentLine(`${theme.fg("warning", "Kill tmux task?")} ${formatTaskRef(task)}`, width),
+    makeContentLine(theme.fg("dim", "This stops only the selected tmux window."), width),
+  ];
+}
+
 function renderDetails(task: TmuxTaskSnapshot | undefined, width: number, theme: any): string[] {
   if (!task) return [makeContentLine(theme.fg("dim", "No task selected"), width)];
 
@@ -160,7 +170,7 @@ function renderDetails(task: TmuxTaskSnapshot | undefined, width: number, theme:
   return lines;
 }
 
-export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, refresh }: ShowTmuxTasksPanelOptions) {
+export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, refresh, onManualKill, onManualKillFailed }: ShowTmuxTasksPanelOptions) {
   if (!ctx.hasUI) return;
 
   await ctx.ui.custom(
@@ -169,6 +179,7 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
       let selectedIndex = 0;
       let busy = false;
       let showDetails = false;
+      let pendingKillTask: TmuxTaskSnapshot | undefined;
       let autoRefreshTimer: NodeJS.Timeout | undefined;
 
       const clampSelection = () => {
@@ -186,7 +197,7 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
       };
 
       const refreshSnapshot = async () => {
-        if (busy) return;
+        if (busy || pendingKillTask) return;
         busy = true;
         try {
           snapshot = await refresh();
@@ -203,18 +214,28 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
         done(undefined);
       };
 
-      const killSelected = async () => {
+      const requestKillSelected = () => {
         const task = selectedTask();
         if (!task || busy) return;
+        pendingKillTask = task;
+        tui.requestRender();
+      };
+
+      const cancelKill = () => {
+        pendingKillTask = undefined;
+        tui.requestRender();
+      };
+
+      const confirmKill = async () => {
+        const task = pendingKillTask;
+        if (!task || busy) return;
         const taskRef = formatTaskRef(task);
-        const confirmed = await ctx.ui.confirm("Kill tmux task?", `Kill ${taskRef}?\n\nThis stops only the selected tmux window.`);
-        if (!confirmed) {
-          tui.requestRender();
-          return;
-        }
+        pendingKillTask = undefined;
         busy = true;
         try {
+          onManualKill?.(task);
           const ok = await tmuxKillWindowById(task.windowId);
+          if (!ok) onManualKillFailed?.(task);
           ctx.ui.notify(ok ? `Killed tmux task ${taskRef}` : `Failed to kill tmux task ${taskRef}`, ok ? "info" : "warning");
           snapshot = await refresh();
           clampSelection();
@@ -244,30 +265,52 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
             clampSelection();
             lines.push(...renderTaskTable(snapshot.tasks, selectedIndex, width, theme));
 
-            if (showDetails) {
+            if (pendingKillTask) {
+              lines.push(makeContentLine("", width));
+              lines.push(...renderKillConfirmation(pendingKillTask, width, theme));
+            } else if (showDetails) {
               lines.push(makeContentLine("", width));
               lines.push(...renderDetails(selectedTask(), width, theme));
             }
           }
 
           lines.push(makeContentLine("", width));
-          const hint = [
-            theme.fg("accent", "[esc]"),
-            theme.fg("dim", " close  "),
-            theme.fg("accent", "[r]"),
-            theme.fg("dim", " refresh  "),
-            theme.fg("accent", "[enter]"),
-            theme.fg("dim", showDetails ? " hide details  " : " details  "),
-            theme.fg("accent", "[k]"),
-            theme.fg("dim", " kill(confirm)"),
-            busy ? theme.fg("dim", "  refreshing...") : "",
-          ].join("");
+          const hint = pendingKillTask
+            ? [
+                theme.fg("accent", "[y]"),
+                theme.fg("dim", " kill  "),
+                theme.fg("accent", "[n/esc]"),
+                theme.fg("dim", " cancel"),
+                busy ? theme.fg("dim", "  killing...") : "",
+              ].join("")
+            : [
+                theme.fg("accent", "[esc]"),
+                theme.fg("dim", " close  "),
+                theme.fg("accent", "[r]"),
+                theme.fg("dim", " refresh  "),
+                theme.fg("accent", "[enter]"),
+                theme.fg("dim", showDetails ? " hide details  " : " details  "),
+                theme.fg("accent", "[k]"),
+                theme.fg("dim", " kill"),
+                busy ? theme.fg("dim", "  refreshing...") : "",
+              ].join("");
           lines.push(makeContentLine(hint, width));
           lines.push(makeBorderLine(width, "╰", "─", "╯"));
           return lines.map((line) => truncateToWidth(line, width));
         },
         invalidate() {},
         handleInput(data: string) {
+          if (pendingKillTask) {
+            if (matchesKey(data, "escape") || data === "n" || data === "N") {
+              cancelKill();
+              return;
+            }
+            if (data === "y" || data === "Y") {
+              void confirmKill();
+              return;
+            }
+            return;
+          }
           if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
             closePanel();
             return;
@@ -294,7 +337,7 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
             return;
           }
           if (data === "k" || data === "K") {
-            void killSelected();
+            requestKillSelected();
           }
         },
       };
