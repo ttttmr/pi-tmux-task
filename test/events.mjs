@@ -98,6 +98,23 @@ events = diffTmuxSnapshots(snapshot([task({ bell: true, bellCount: 1 })]), snaps
 assert.equal(events.length, 1);
 assert.equal(events[0].type, 'notify');
 
+// notify and exit observed in the same snapshot are ordered by runtime sequence and rendered once
+events = diffTmuxSnapshots(
+  snapshot([task({ bell: false, bellCount: 0 })]),
+  snapshot([task({ dead: true, exitCode: 0, bell: true, bellCount: 1, outputPreview: 'wake up\nPane is dead (status 0)' })]),
+);
+assert.equal(events.length, 2);
+assert.equal(events[0].type, 'notify');
+assert.equal(events[1].type, 'exited');
+assert.equal(
+  formatTmuxTaskEvents(events),
+  `${eventHeader}\ntmux task @1 (web) sent a terminal notification, then exited with code 0\nrecent output:\n  wake up\n  Pane is dead (status 0)`,
+);
+assert.equal(
+  formatTmuxTaskNotice(events),
+  `tmux task @1 (web) sent a terminal notification, then exited with code 0\nrecent output:\n  wake up\n  Pane is dead (status 0)`,
+);
+
 // input prompt extraction
 const promptLine = 'Proceed with migration? [y/N]';
 assert.equal(extractInputPrompt(`starting...\n${promptLine}`), promptLine);

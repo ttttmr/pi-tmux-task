@@ -133,6 +133,12 @@ tmux task @12 (task-name) sent a terminal notification
 
 The hook-maintained counter avoids missing repeated bells when tmux's sticky bell flag remains set.
 
+If the same snapshot observes both a terminal bell and process exit for the same task, the event list keeps the runtime order (`notify` before `exited`) but the conversation/UI text is collapsed into a single line:
+
+```text
+tmux task @12 (task-name) sent a terminal notification, then exited with code 0
+```
+
 ### `input`
 
 A live task appears blocked on an interactive prompt.
@@ -201,7 +207,7 @@ When a window is killed from the `/tmux-tasks` panel, the extension records that
 After every snapshot, `handleActiveSnapshot(...)`:
 
 1. installs the bell hook if needed;
-2. diffs the previous and current snapshots;
+2. diffs the previous and current snapshots; for a task that rings and exits in the same snapshot, semantic event order is `notify` then `exited`;
 3. stores the current snapshot as the next baseline;
 4. dedupes repeated input events;
 5. updates the status line;

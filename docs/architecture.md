@@ -250,6 +250,7 @@ Important details:
 - The first snapshot establishes baseline and does not replay historical running/dead/bell events.
 - `input` requires a live known pane and the same prompt-like output across two polls.
 - Repeated `input` notifications are deduped per `windowId + prompt`.
+- If a task rings and exits in the same snapshot, the semantic order is `notify` then `exited`, and delivery text collapses them into one combined notification.
 - Dead window cleanup does not produce `disappeared` notifications.
 
 ### Phase 8 — event delivery chooses UI vs conversation

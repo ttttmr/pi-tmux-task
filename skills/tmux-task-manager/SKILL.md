@@ -17,6 +17,7 @@ Manage the agent's Pi-session background work through tmux. The runtime is tmux,
 - The helper records the invocation cwd and reruns the task from that cwd.
 - When Pi exits, the extension stops observing the tmux task session but does not kill or rename it. Agents and users own explicit cleanup.
 - When a task exits, the extension sends the exit notification and preserves the dead tmux window for later inspection.
+- For one-shot delayed reminders, rely on the normal exit notification and final output; do not also emit a terminal bell unless the task is meant to continue running after requesting attention.
 
 ## Use when
 
@@ -122,15 +123,15 @@ The helper prefers reusing the existing named task slot, preserving the underlyi
 
 ### Delay once
 
-Use a normal task whose command sleeps, then emits a terminal bell when it needs attention:
+Use a normal task whose command sleeps, prints the reminder, then exits. Do not add `printf "\a"` for one-shot reminders: the exit notification already wakes the agent, and adding a bell creates redundant task events.
 
 ```bash
-./tmux-task-run.sh review-reminder -- 'sleep 1800; printf "\a"; echo "start review now"'
+./tmux-task-run.sh review-reminder -- 'sleep 1800; echo "start review now"'
 ```
 
 ### Run recurring checks
 
-Use a loop in its own task slot. Emit `printf "\a"` for cycles that should wake the agent:
+Use a loop in its own task slot. Emit `printf "\a"` for cycles that should wake the agent while the task keeps running:
 
 ```bash
 ./tmux-task-run.sh scan-watch -- 'while true; do npm audit || printf "\a"; sleep 600; done'
@@ -209,7 +210,7 @@ The task emitted a terminal bell.
 
 - Treat it as a request for attention, not success/failure by itself.
 - Inspect recent output or task state for that `window_id` before deciding what happened.
-- Reminder and recurring tasks should use `printf "\a"` when they want active follow-up.
+- Use `printf "\a"` for running tasks that need attention without exiting, such as recurring checks. For one-shot reminders, print the reminder and exit instead.
 
 ### `input`
 
@@ -237,7 +238,7 @@ When managing background tasks:
 4. Use one stable task name per logical task.
 5. After starting/rerunning, remember the helper's `window_id`, task name, command, and cwd.
 6. Rerun with the same task name when restarting the same logical task.
-7. Use terminal bell for delayed/recurring tasks that should wake the agent.
+7. For delayed one-shot reminders, print the reminder and exit; use terminal bell only for still-running tasks that should wake the agent.
 8. Inspect before restarting when debugging.
 9. Use direct tmux commands for inspect, input, stop, and cleanup.
 10. React carefully to `exited`, `notify`, `input`, and `disappeared` notifications.

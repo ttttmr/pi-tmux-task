@@ -79,12 +79,12 @@ export function diffTmuxSnapshots(previous: TmuxSnapshot | undefined, current: T
       continue;
     }
 
-    if (!previousTask.dead && currentTask.dead) {
-      events.push(makeExitedEvent(currentTask));
-    }
-
     if (getBellCount(currentTask) > getBellCount(previousTask) || (!previousTask.bell && currentTask.bell)) {
       events.push({ type: "notify", task: currentTask });
+    }
+
+    if (!previousTask.dead && currentTask.dead) {
+      events.push(makeExitedEvent(currentTask));
     }
 
     const previousPrompt = extractInputPrompt(previousTask.outputPreview);
@@ -182,15 +182,58 @@ export function formatTmuxTaskEvent(event: TmuxTaskEvent): string {
   }
 }
 
+function sameTask(a: TmuxTaskSnapshot, b: TmuxTaskSnapshot): boolean {
+  return a.windowId === b.windowId;
+}
+
+function formatNotifyExitEvent(notifyEvent: Extract<TmuxTaskEvent, { type: "notify" }>, exitEvent: Extract<TmuxTaskEvent, { type: "exited" }>): string {
+  const message = `tmux task ${formatTaskRef(exitEvent.task)} sent a terminal notification, then exited with ${formatExitCode(exitEvent.task.exitCode)}`;
+  const preview = formatPreview(exitEvent.task.outputPreview ?? notifyEvent.task.outputPreview);
+  return preview ? `${message}\nrecent output:\n${preview}` : message;
+}
+
+function formatTmuxTaskEventMessages(events: TmuxTaskEvent[]): string[] {
+  const notifyByWindowId = new Map<string, { event: Extract<TmuxTaskEvent, { type: "notify" }>; index: number }>();
+  const exitByWindowId = new Map<string, { event: Extract<TmuxTaskEvent, { type: "exited" }>; index: number }>();
+
+  events.forEach((event, index) => {
+    if (event.type === "notify") notifyByWindowId.set(event.task.windowId, { event, index });
+    if (event.type === "exited") exitByWindowId.set(event.task.windowId, { event, index });
+  });
+
+  const pairedIndices = new Map<number, { notify: Extract<TmuxTaskEvent, { type: "notify" }>; exit: Extract<TmuxTaskEvent, { type: "exited" }> }>();
+  const consumedIndices = new Set<number>();
+  for (const [windowId, notifyEntry] of notifyByWindowId) {
+    const exitEntry = exitByWindowId.get(windowId);
+    if (!exitEntry || !sameTask(notifyEntry.event.task, exitEntry.event.task)) continue;
+    pairedIndices.set(Math.min(notifyEntry.index, exitEntry.index), { notify: notifyEntry.event, exit: exitEntry.event });
+    consumedIndices.add(notifyEntry.index);
+    consumedIndices.add(exitEntry.index);
+  }
+
+  const messages: string[] = [];
+  events.forEach((event, index) => {
+    const pair = pairedIndices.get(index);
+    if (pair) {
+      messages.push(formatNotifyExitEvent(pair.notify, pair.exit));
+      return;
+    }
+    if (consumedIndices.has(index)) return;
+    messages.push(formatTmuxTaskEvent(event));
+  });
+
+  return messages;
+}
+
 export function formatTmuxTaskEvents(events: TmuxTaskEvent[]): string | undefined {
   const visibleEvents = events.filter((event) => event.type !== "started");
   if (visibleEvents.length === 0) return undefined;
-  return ["[tmux-task notification]", ...visibleEvents.map(formatTmuxTaskEvent)].join("\n");
+  return ["[tmux-task notification]", ...formatTmuxTaskEventMessages(visibleEvents)].join("\n");
 }
 
 export function formatTmuxTaskNotice(events: TmuxTaskEvent[]): string | undefined {
   if (events.length === 0) return undefined;
-  return events.map(formatTmuxTaskEvent).join("\n");
+  return formatTmuxTaskEventMessages(events).join("\n");
 }
 
 export function getTmuxTaskEventLevel(events: TmuxTaskEvent[]): "info" | "warning" | "error" {
