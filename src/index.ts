@@ -104,6 +104,15 @@ function formatStatusLine(snapshot: TmuxSnapshot | undefined): string | undefine
   return `tmux: ${snapshot.tasks.length} tasks`;
 }
 
+export function hasActiveTmuxTasks(snapshot: TmuxSnapshot): boolean {
+  if (!snapshot.exists) return false;
+  return snapshot.tasks.some((task) => !task.paneStateKnown || !task.dead);
+}
+
+export function shouldCleanUpTmuxSessionOnShutdown(snapshot: TmuxSnapshot): boolean {
+  return snapshot.exists && !hasActiveTmuxTasks(snapshot);
+}
+
 function formatCommandUsage(): string {
   return [
     "Usage:",
@@ -217,6 +226,11 @@ async function listPiSessionTitleSources(ctx: ExtensionContext): Promise<PiSessi
   }
 }
 
+async function cleanUpInactiveCurrentSession(sessionName: string): Promise<void> {
+  const snapshot = await collectTmuxSnapshot(sessionName);
+  if (shouldCleanUpTmuxSessionOnShutdown(snapshot)) await tmuxKillSession(sessionName);
+}
+
 async function cleanAndNotifyStaleProjectSessions(ctx: ExtensionContext, currentSessionName: string): Promise<void> {
   const projectSlug = projectSlugForPath(ctx.cwd);
   const noticeState = staleNoticeStateFor(projectSlug);
@@ -316,12 +330,17 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async (event, ctx) => {
+    const sessionId = sessionIdFor(ctx);
+    const sessionName = sessionNameFor(ctx);
+
     stopActivePoller();
+    await cleanUpInactiveCurrentSession(sessionName);
+    runtime.sessions.delete(sessionId);
     if (event.reason === "quit") {
       runtime.sessions.clear();
       runtime.staleNotices.clear();
     }
-    if (runtime.activeSessionId === sessionIdFor(ctx)) runtime.activeSessionId = undefined;
+    if (runtime.activeSessionId === sessionId) runtime.activeSessionId = undefined;
     ctx.ui.setStatus("tmux-task", undefined);
   });
 

@@ -38,7 +38,6 @@ This repository is a **Pi extension package** for Pi-session-scoped background t
 ├── skills/
 │   └── tmux-task-manager/
 │       ├── SKILL.md
-│       ├── tmux-session-name.sh
 │       └── tmux-task-run.sh
 ├── src/
 │   ├── context.ts
@@ -55,7 +54,6 @@ This repository is a **Pi extension package** for Pi-session-scoped background t
 └── test/
     ├── context.mjs
     ├── events.mjs
-    ├── session-name.sh
     └── tmux-integration.sh
 ```
 
@@ -64,8 +62,7 @@ This repository is a **Pi extension package** for Pi-session-scoped background t
 - `docs/architecture.md`: high-level architecture, runtime phases, lifecycle, and cleanup model.
 - `docs/tmux-task-event-flow.md`: event-flow notes for polling, diffing, notifications, and `/tmux-tasks`.
 - `skills/tmux-task-manager/SKILL.md`: the agent-facing background-task-management contract.
-- `skills/tmux-task-manager/tmux-session-name.sh`: shell helper to deterministically compute the tmux session name.
-- `skills/tmux-task-manager/tmux-task-run.sh`: helper to start or rerun a named task slot with explicit `PI_TMUX_SESSION` and `remain-on-exit`.
+- `skills/tmux-task-manager/tmux-task-run.sh`: helper to start or rerun a named task slot with injected `PI_TMUX_SESSION` and `remain-on-exit`.
 - `src/index.ts`: extension entry point; wires session lifecycle, env injection, polling, notifications, and `/tmux-tasks` command.
 - `src/context.ts`: session-name computation logic shared by runtime/tests.
 - `src/tmux/commands.ts`: tmux subprocess wrappers.
@@ -83,8 +80,8 @@ The extension relies on a bundled skill instead of a custom scheduler.
 
 Important conventions encoded by the skill:
 - Treat long-running or non-blocking work as a background task management problem, not a generic tmux tutorial problem.
-- Reuse `$PI_TMUX_SESSION` if available.
-- Fall back to the helper script if the env var is missing.
+- Use the injected `$PI_TMUX_SESSION`.
+- Do not compute, guess, or repair the session name if the env var is missing; report an extension/environment problem instead.
 - Use **one task slot per logical task**.
 - Give tasks concise but meaningful stable names like `frontend-dev`, `api-server`, `worker-sync`, `scan-deps`, `tests-watch`.
 - When rerunning the same task, prefer reusing the existing task slot so the `window_id` stays stable when possible; replace the slot only when reuse is not practical.
@@ -96,7 +93,6 @@ Important conventions encoded by the skill:
 Implemented mainly in:
 - `src/context.ts`
 - `src/index.ts`
-- `skills/tmux-task-manager/tmux-session-name.sh`
 
 Behavior:
 - Compute a stable name from `ctx.cwd` plus the current Pi session id.
@@ -108,7 +104,6 @@ Behavior:
 - The extension prepends every bash tool call with `export PI_TMUX_SESSION=...` as the single task-routing variable.
 - The task helper runs tasks from the directory where it is invoked, so a command can `cd` into a worktree or subdirectory before calling the helper.
 - The task helper explicitly exports the same `PI_TMUX_SESSION` inside task panes so they do not inherit stale tmux server environment values.
-- The helper shell script can compute the same name from `pwd` or from an absolute path argument plus a Pi session id for manual use outside Pi.
 
 Key design rule:
 - Session naming is **Pi-session-scoped**.
@@ -189,8 +184,7 @@ Notification behavior:
 | Install dependencies | `npm install` |
 | Run checks/tests | `npm run check` |
 | Inspect package metadata | `node -e "console.log(require('./package.json'))"` *(CommonJS shells only; package itself is ESM)* |
-| Compute session name | `pi-tmux-session-name "$PWD" "<pi-session-id>"` |
-| Start or rerun a task | `PI_TMUX_SESSION=... pi-tmux-task-run <task-name> -- <command>` |
+| Start or rerun a task | `pi-tmux-task-run <task-name> -- <command>` inside Pi with injected `PI_TMUX_SESSION` |
 
 ### Notes on running
 - There is **no dedicated build script** right now.
@@ -228,11 +222,10 @@ Notification behavior:
 ### Add or change session naming
 Touch:
 - `src/context.ts`
-- `skills/tmux-task-manager/tmux-session-name.sh`
+- `src/index.ts`
 - `test/context.mjs`
-- `test/session-name.sh`
 
-These must stay consistent.
+Session naming is extension-owned; do not add agent-facing session-name computation helpers.
 
 ### Add or change task event behavior
 Touch:
@@ -267,5 +260,5 @@ The skill is part of the product surface, not just an internal note.
 - The status indicator should disappear when the configured tmux task session does not exist.
 - Session names must be tmux-safe; avoid `:` in the session name format.
 - The helper scripts are part of the intended UX surface, not incidental utilities.
-- `tmux-task-run.sh` requires an explicit `PI_TMUX_SESSION`; if it is missing, the agent should compute and export it first.
+- `tmux-task-run.sh` requires injected `PI_TMUX_SESSION`; if it is missing, the agent should stop and report an extension/environment problem instead of computing or inventing one.
 - If you change message wording, also review event tests, docs, and the skill text.

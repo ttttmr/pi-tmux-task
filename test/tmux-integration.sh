@@ -2,7 +2,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-HELPER="$ROOT_DIR/skills/tmux-task-manager/tmux-session-name.sh"
 
 fail() {
   echo "[FAIL] $*" >&2
@@ -42,7 +41,7 @@ old_global_pi_session_id="$(save_tmux_global_env PI_SESSION_ID)"
 old_global_pi_tmux_session="$(save_tmux_global_env PI_TMUX_SESSION)"
 
 session_id="019e4988-b257-7be4-a6f7-b945f8fb7d36"
-session_name="$($HELPER /tmp/Example\ Project "$session_id")"
+session_name="pi-example-project-${session_id}"
 cleanup_session "$session_name"
 cleanup_all() {
   cleanup_session "$session_name"
@@ -56,7 +55,7 @@ if tmux new-session -d -s "$session_name" -n shell; then
   [[ "$actual_name" == "$session_name" ]] || fail "session name should round-trip exactly"
   pass "session name round-trips exactly"
 else
-  fail "failed to create session with computed name"
+  fail "failed to create expected session name"
 fi
 
 if tmux new-window -d -t "$session_name" -n integration-test; then
@@ -132,7 +131,7 @@ if ! grep -q 'invalid task name' /tmp/pi-tmux-task-run-bad-name.err; then
 fi
 pass "tmux-task-run helper validates task names"
 
-fresh_session_name="$($HELPER /tmp/Another\ Example\ Project "$session_id")"
+fresh_session_name="pi-another-example-project-${session_id}"
 cleanup_session "$fresh_session_name"
 first_run_output="$(PI_TMUX_SESSION="$fresh_session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" first-task -- 'printf "from first task\\n"; exit 0')"
 [[ "$first_run_output" == *"task=first-task"* ]] || fail "first task should report task name"

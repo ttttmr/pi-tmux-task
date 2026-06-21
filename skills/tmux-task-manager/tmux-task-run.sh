@@ -4,10 +4,12 @@ set -euo pipefail
 usage() {
   cat >&2 <<'EOF'
 Usage:
-  PI_TMUX_SESSION=<session-name> tmux-task-run.sh <task-name> -- <shell-command>
+  tmux-task-run.sh <task-name> -- <shell-command>
+
+Requires:
+  PI_TMUX_SESSION must already be set by the Pi tmux-task extension.
 
 Example:
-  export PI_TMUX_SESSION="$(./tmux-session-name.sh "$PWD" "<pi-session-id>")"
   ./tmux-task-run.sh api-server -- 'npm run dev'
 EOF
   exit 1
@@ -18,9 +20,7 @@ require_session() {
     cat >&2 <<'EOF'
 tmux-task-run: PI_TMUX_SESSION is required.
 
-Generate it first, then export it before calling this helper. For example:
-  export PI_TMUX_SESSION="$(./tmux-session-name.sh "$PWD" "<pi-session-id>")"
-  ./tmux-task-run.sh <task-name> -- '<command>'
+This helper intentionally does not compute or guess the session name. Run it from a Pi session where the tmux-task extension injects PI_TMUX_SESSION.
 EOF
     exit 1
   fi

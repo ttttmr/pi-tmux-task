@@ -11,8 +11,7 @@ For detailed event detection rules, see [`tmux-task-event-flow.md`](tmux-task-ev
 | Skill `tmux-task-manager` | `skills/tmux-task-manager/SKILL.md` | Teaches the agent when/how to run long-running work as managed background tasks. |
 | Slash command `/tmux-tasks` | `src/index.ts` | Shows and manages tasks for the current Pi session. |
 | Bash env injection | `src/index.ts` `tool_call` handler | Prepends `export PI_TMUX_SESSION=...` to every Pi `bash` call. |
-| Helper CLI `pi-tmux-session-name` | `package.json -> bin` | Computes the tmux session name outside Pi. |
-| Helper CLI `pi-tmux-task-run` | `package.json -> bin` | Starts/reruns one named task slot inside `$PI_TMUX_SESSION`. |
+| Helper CLI `pi-tmux-task-run` | `package.json -> bin` | Starts/reruns one named task slot inside injected `$PI_TMUX_SESSION`. |
 | Task notifications | `src/index.ts` poller callback | Converts tmux state changes into UI notices or conversation messages. |
 
 The extension does **not** register a new LLM tool. The agent still uses Pi's normal `bash` tool; this extension only injects the task-routing environment variable before the command runs.
@@ -62,6 +61,8 @@ Where:
 ```bash
 export PI_TMUX_SESSION="<computed-session-name>"
 ```
+
+Agents and helper scripts do not compute this value. If it is missing from a Pi bash call, managed task startup should fail fast instead of guessing an ad-hoc tmux session name.
 
 Because `project-slug` uses only the basename, same-basename checkouts share the same historical-session scan prefix. This is intentional best-effort cleanup/notice behavior, not strict path ownership.
 
@@ -298,7 +299,8 @@ tmux capture-pane -pt @12 -S -80
 
 - `prune-dead` kills only dead/exited task windows in the current Pi task session.
 - `kill-all` kills the entire current Pi task session after confirmation.
-- Pi shutdown does not kill active tasks.
+- Pi shutdown kills the current Pi task session only when it has no active tasks.
+- Pi shutdown preserves the current Pi task session when any task is still active.
 - The next session startup may clean inactive historical sessions automatically.
 
 ### Phase 10 — session shutdown
@@ -308,11 +310,14 @@ tmux capture-pane -pt @12 -S -80
 **What happens:**
 
 1. The extension stops the active poller.
-2. If the reason is `quit`, process-local runtime maps are cleared.
-3. The status line is cleared.
-4. Active tmux tasks are not killed.
+2. It snapshots the current Pi task tmux session.
+3. If the session exists and has no active tasks, the whole tmux session is killed.
+4. If any task is active, the tmux session is preserved.
+5. The current session runtime entry is removed.
+6. If the reason is `quit`, process-local runtime maps are cleared.
+7. The status line is cleared.
 
-Inactive historical sessions are cleaned on the next startup scan instead.
+Inactive historical sessions are also cleaned on the next startup scan as a fallback.
 
 ## Lifecycle summary
 
@@ -349,8 +354,9 @@ poll tick
 
 session_shutdown
   -> stop active poller
+  -> cleanup current tmux session when it has no active tasks
+  -> preserve current tmux session when it still has active tasks
   -> clear in-memory runtime state on quit
-  -> do not kill active tmux tasks
 ```
 
 ## Cleanup model
@@ -360,7 +366,7 @@ session_shutdown
 | Startup historical scan | Same-project historical sessions with zero active tasks | Historical sessions with active tasks |
 | `/tmux-tasks prune-dead` | Dead windows in current Pi task session | Running windows |
 | `/tmux-tasks kill-all` | Entire current Pi task session after confirmation | Other Pi/task sessions |
-| `session_shutdown` | Poller and in-memory runtime state | Active tmux tasks |
+| `session_shutdown` | Poller, in-memory runtime entry, and the current tmux session when it has zero active tasks | Current tmux session when any task is still active |
 
 This model avoids killing running work just because Pi or a Paseo-managed agent exits, while still removing abandoned sessions that contain no live tasks.
 

@@ -16,8 +16,7 @@ It does **not** implement a scheduler or replace tmux. It gives Pi a simple conv
   - Opens a task panel in TUI mode, or prints a text summary without TUI.
 - Bash integration:
   - Every Pi `bash` call receives `PI_TMUX_SESSION=<current-session-task-session>`.
-- Helper CLIs:
-  - `pi-tmux-session-name`
+- Helper CLI:
   - `pi-tmux-task-run`
 - Task notifications:
   - Task exit, terminal bell, input wait, and unexpected disappearance can notify the active Pi conversation.
@@ -90,14 +89,9 @@ If running from this repository without installing the package bin links:
 ./skills/tmux-task-manager/tmux-task-run.sh api-server -- 'npm run dev'
 ```
 
-When running outside Pi, compute and export the session first:
-
-```bash
-export PI_TMUX_SESSION="$(pi-tmux-session-name "$PWD" '<pi-session-id>')"
-pi-tmux-task-run api-server -- 'npm run dev'
-```
-
 Inside Pi, the extension injects `PI_TMUX_SESSION` into bash tool calls, so helper commands automatically target the current conversation's task session.
+
+`pi-tmux-task-run` intentionally does not compute or guess the session name. If `PI_TMUX_SESSION` is missing, fix the Pi extension/environment instead of exporting an ad-hoc value.
 
 Inspect tasks in Pi:
 
@@ -126,9 +120,9 @@ tmux capture-pane -pt @12 -S -80
 
 ## Cleanup behavior
 
-Pi shutdown does **not** kill active tmux tasks.
+Pi shutdown cleans up the current tmux task session when it has no active tasks. Sessions that are missing, empty, or contain only dead/exited task windows are removed automatically. If any task is still active, the session is preserved so long-running work can continue after Pi exits.
 
-On the next Pi startup, the extension scans same-project historical tmux sessions:
+On the next Pi startup, the extension also scans same-project historical tmux sessions:
 
 - sessions with no active tasks are cleaned automatically;
 - sessions with active tasks are left running and reported to the user with a UI notice;
