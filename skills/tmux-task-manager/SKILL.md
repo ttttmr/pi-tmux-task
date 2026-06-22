@@ -1,116 +1,111 @@
 ---
 name: tmux-task-manager
-description: Use this skill whenever work should keep running without blocking the current conversation, including starting, rerunning, inspecting, stopping, delaying, scheduling, cleaning up, or following up on background tasks. Use for dev servers, watch commands, long scans/builds/tests, log tails, delayed reminders, recurring checks, and parallel subtasks that should continue while the agent works. Do not use for generic tmux questions or short foreground commands.
+description: Use this skill whenever a command should keep running in the background for the current Pi conversation and report back when it exits, rings, blocks on input, or needs follow-up. Use for dev servers, watches, long tests/builds/scans, delayed reminders, log tails, and parallel subtasks. Do not use for short foreground commands or generic tmux help.
 ---
 
 # Pi Session Task Manager
 
-Use this skill to manage **background work for the current Pi conversation**. It is an operational checklist, not a tmux tutorial.
+Use this skill to start and observe background work for the **current Pi conversation**.
 
-## Goal
+## Golden path
 
-Make long-running work observable by Pi:
-
-- one Pi conversation → one injected `$PI_TMUX_SESSION`;
-- one logical task → one stable tmux window/task name;
-- task exits, bells, input waits, and disappearances can notify the agent.
-
-## Non-negotiables
-
-- Start/rerun managed tasks with `tmux-task-run.sh`; do not hand-write tmux startup commands.
-- Use the injected `$PI_TMUX_SESSION` only. Never compute, guess, export, or repair it.
-- If `$PI_TMUX_SESSION` is missing, stop and report an extension/environment problem.
-- Run the helper from the directory that should become the task cwd.
-- Keep task names stable and concise: letters, numbers, `.`, `_`, `-`, max 40 chars.
-- Preserve helper output in your notes: `session`, `window_id`, `task`, `cwd`.
-
-## Start or rerun a task
-
-Use the helper path from this skill directory, resolved absolutely when needed:
+Run the helper with a stable task name and the command:
 
 ```bash
 /path/to/tmux-task-run.sh <task-name> -- '<command>'
 ```
 
+That is all. The helper automatically:
+
+- reads the injected `$PI_TMUX_SESSION`;
+- creates the tmux session if it does not exist;
+- creates or reuses the named task window;
+- runs the command from your current directory;
+- keeps the window after exit so output can be inspected;
+- lets Pi send a notification when the task exits, rings, disappears, or waits for input.
+
+Record the helper output:
+
+```text
+session=...
+session_created=true|false
+window_id=...
+task=...
+cwd=...
+```
+
+## Error rule
+
+Only handle this environment error yourself:
+
+- If `$PI_TMUX_SESSION` is missing or empty, stop and report that the Pi task environment was not injected.
+
+Do **not** preflight or repair tmux sessions. If `$PI_TMUX_SESSION` is set, call the helper and let it manage the session.
+
+Do not:
+
+- run `tmux ls` to pick another session;
+- run `tmux has-session` and then replace `$PI_TMUX_SESSION`;
+- invoke the helper as `PI_TMUX_SESSION=<guessed-session> tmux-task-run.sh ...`;
+- copy a session name from another conversation.
+
+If the helper itself fails, report the helper error instead of guessing a fix.
+
+## Task names
+
+Use one stable task name per logical task. Keep it short: letters, numbers, `.`, `_`, `-`, max 40 chars.
+
 Examples:
 
 ```bash
-/path/to/tmux-task-run.sh api-server -- 'npm run dev'
-/path/to/tmux-task-run.sh tests-watch -- 'pnpm test -- --watch'
-/path/to/tmux-task-run.sh review-reminder -- 'sleep 1800; echo "start review now"'
+/path/to/tmux-task-run.sh api-server -- 'pnpm dev'
+/path/to/tmux-task-run.sh web-build -- 'pnpm --filter @echo/web build'
+/path/to/tmux-task-run.sh review-wait -- './scripts/paseo-watch run --prompt-file tmp/review.md --provider pi --cwd /repo'
 ```
 
-For a worktree or subdirectory:
+Use the same task name to rerun the same logical task; the helper handles window reuse/replacement.
 
-```bash
-TASK_RUN=/absolute/path/to/tmux-task-run.sh
-cd /path/to/worktree
-"$TASK_RUN" api-server -- 'npm run dev'
-```
+## Inspect
 
-Use the same task name to rerun the same logical task. Choose a new name only when the task meaning changes.
-
-## Inspect tasks
-
-List tasks in the current Pi task session:
-
-```bash
-tmux list-windows -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}'
-tmux list-panes -s -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}\t#{pane_id}\t#{pane_dead}\t#{pane_dead_status}\t#{pane_current_command}'
-```
-
-Capture output by exact `window_id`:
+Prefer the recorded `window_id`:
 
 ```bash
 tmux capture-pane -pt @12 -S -120
 ```
 
-Find a window by task name only when you do not yet know the id:
+List current task windows only when you need orientation:
 
 ```bash
-window_id="$(tmux list-windows -t "$PI_TMUX_SESSION" -F '#{window_name}|#{window_id}' | awk -F '|' '$1=="api-server"{print $2; exit}')"
-[[ -n "$window_id" ]] && tmux capture-pane -pt "$window_id" -S -120
+tmux list-windows -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}'
+tmux list-panes -s -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}\t#{pane_dead}\t#{pane_dead_status}\t#{pane_current_command}'
 ```
 
 ## Notifications
 
-Pi may inject `[tmux-task notification]` messages. Treat them as task state, not user requests.
+Treat `[tmux-task notification]` as task state, not as a new user request.
 
-- `exited`: consume the result. Inspect the dead window if the included output is insufficient. Do not restart expected one-shot tasks.
-- `notify`: task rang the bell while still running. Inspect output before deciding.
-- `input`: task appears blocked on a prompt. Send input only if the answer is safe and obvious; ask the user for credentials, secrets, destructive confirmations, or policy choices.
-- `disappeared`: a known window vanished. Verify whether it was killed/replaced; restart only if the logical task should still exist.
+- `exited`: inspect/consume the result. Do not restart an expected one-shot task.
+- `notify`: inspect output before deciding.
+- `input`: answer only if safe and obvious; ask for secrets/destructive choices.
+- `disappeared`: verify whether the task was killed/replaced.
 
-For one-shot reminders, print and exit; do not also ring a bell. Use `printf "\a"` only for long-running loops that need attention without exiting.
+If you already consumed a notification for the same task/window/attempt, mark later duplicates as already handled and continue the current user-facing gate.
 
-## Stop and cleanup
+## Cleanup
 
-Stop one task:
+After a completed task is consumed, remove only that task window:
 
 ```bash
 tmux kill-window -t @12
 ```
 
-Clean dead windows in the current Pi task session:
+Do not kill the whole tmux session unless the user explicitly approves.
 
-```bash
-tmux list-panes -s -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{pane_dead}' \
-  | awk -F '\t' '$2=="1"{print $1}' \
-  | sort -u \
-  | xargs -r -n1 tmux kill-window -t
-```
+## Checklist
 
-Kill the whole current Pi task session only after explicit user approval:
-
-```bash
-tmux kill-session -t "$PI_TMUX_SESSION"
-```
-
-## Quick checklist
-
-1. Is this truly background work? If not, run it foreground.
-2. Is `$PI_TMUX_SESSION` present? If not, stop.
+1. Is this actually background work? If not, run it foreground.
+2. Is `$PI_TMUX_SESSION` non-empty? If not, stop and report environment injection failure.
 3. `cd` to the desired task cwd.
-4. Run `tmux-task-run.sh <stable-name> -- '<command>'`.
-5. Record `window_id` and task name.
-6. On notifications, inspect/route/cleanup without waiting for the user unless a real decision is needed.
+4. Run `tmux-task-run.sh <task-name> -- '<command>'`.
+5. Record `session`, `session_created`, `window_id`, `task`, and `cwd`.
+6. On notifications, consume/route/cleanup without treating them as new user requests.

@@ -100,7 +100,7 @@ normalize_display_command() {
 }
 
 main() {
-  local task_name command_string session window_id shell_command shell_payload display_command pane_id task_cwd
+  local task_name command_string session window_id shell_command shell_payload display_command pane_id task_cwd session_created
 
   [[ $# -ge 3 ]] || usage
   task_name="$1"
@@ -113,7 +113,11 @@ main() {
   validate_task_name "$task_name"
   session="$(require_session)"
   task_cwd="$(resolve_task_cwd)"
-  ensure_task_session "$session" "$task_name" "$task_cwd" || true
+  if ensure_task_session "$session" "$task_name" "$task_cwd"; then
+    session_created=true
+  else
+    session_created=false
+  fi
   install_bell_hook "$session"
   set_task_session_environment "$session"
 
@@ -145,7 +149,7 @@ $command_string"
     tmux select-pane -t "$pane_id" -T "$display_command" >/dev/null
   fi
 
-  printf 'session=%s\nwindow_id=%s\ntask=%s\ncwd=%s\n' "$session" "$window_id" "$task_name" "$task_cwd"
+  printf 'session=%s\nsession_created=%s\nwindow_id=%s\ntask=%s\ncwd=%s\n' "$session" "$session_created" "$window_id" "$task_name" "$task_cwd"
 }
 
 main "$@"

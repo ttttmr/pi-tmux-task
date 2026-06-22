@@ -89,6 +89,7 @@ tmux set-environment -g PI_SESSION_ID stale-pi-session >/dev/null
 tmux set-environment -g PI_TMUX_SESSION stale-tmux-session >/dev/null
 run_output="$(cd "$helper_cwd" && PI_TMUX_SESSION="$session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" helper-run -- 'printf "from helper run cwd=%s\\n" "$PWD"; printf "task env session=%s pi=%s\\n" "${PI_TMUX_SESSION:-missing}" "${PI_SESSION_ID-unset}"; exit 0')"
 [[ "$run_output" == *"task=helper-run"* ]] || fail "run helper should report task name"
+[[ "$run_output" == *"session_created=false"* ]] || fail "run helper should report when it reused an existing session"
 [[ "$run_output" == *"cwd=$helper_cwd"* ]] || fail "run helper should report task cwd"
 sleep 1
 helper_run_window_id="$(tmux list-windows -t "$session_name" -F '#{window_name}|#{window_id}' | awk -F '|' '$1=="helper-run"{print $2; exit}')"
@@ -135,6 +136,7 @@ fresh_session_name="pi-another-example-project-${session_id}"
 cleanup_session "$fresh_session_name"
 first_run_output="$(PI_TMUX_SESSION="$fresh_session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" first-task -- 'printf "from first task\\n"; exit 0')"
 [[ "$first_run_output" == *"task=first-task"* ]] || fail "first task should report task name"
+[[ "$first_run_output" == *"session_created=true"* ]] || fail "first task should report when it created a fresh session"
 sleep 1
 window_names="$(tmux list-windows -t "$fresh_session_name" -F '#{window_name}')"
 [[ "$window_names" == "first-task" ]] || fail "fresh session should contain only the task window, not a bootstrap shell"
