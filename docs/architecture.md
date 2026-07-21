@@ -11,7 +11,7 @@ For detailed event detection rules, see [`tmux-task-event-flow.md`](tmux-task-ev
 | Skill `tmux-task-manager` | `skills/tmux-task-manager/SKILL.md` | Teaches the agent when/how to run long-running work as managed background tasks. |
 | Slash command `/tmux-tasks` | `src/index.ts` | Shows and manages tasks for the current Pi session. |
 | Bash env injection | `src/index.ts` `tool_call` handler | Prepends `export PI_TMUX_SESSION=...` to every Pi `bash` call. |
-| Helper CLI `pi-tmux-task-run` | `package.json -> bin` | Starts/reruns one named task slot inside injected `$PI_TMUX_SESSION`. |
+| Helper script `tmux-task-run.sh` | `skills/tmux-task-manager/tmux-task-run.sh` | Starts/reruns one named task slot inside injected `$PI_TMUX_SESSION`. |
 | Task notifications | `src/index.ts` poller callback | Converts tmux state changes into UI notices or conversation messages. |
 
 The extension does **not** register a new LLM tool. The agent still uses Pi's normal `bash` tool; this extension only injects the task-routing environment variable before the command runs.
@@ -146,7 +146,7 @@ Then the original command runs unchanged after that line.
 Typical command:
 
 ```bash
-./tmux-task-run.sh <task-name> -- '<shell-command>'
+/path/to/skills/tmux-task-manager/tmux-task-run.sh <task-name> -- '<shell-command>'
 ```
 
 **What the helper does:**

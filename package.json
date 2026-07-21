@@ -1,6 +1,6 @@
 {
   "name": "pi-tmux-task",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A minimal tmux-based task manager for agents, with skills and notifications only.",
   "keywords": [
     "pi-package",
@@ -23,15 +23,13 @@
   "license": "MIT",
   "files": [
     "README.md",
+    "README_ZH.md",
     "LICENSE",
     "docs",
     "skills",
     "src"
   ],
   "type": "module",
-  "bin": {
-    "pi-tmux-task-run": "skills/tmux-task-manager/tmux-task-run.sh"
-  },
   "scripts": {
     "check": "./test/tmux-integration.sh && node --experimental-strip-types ./test/context.mjs && node --experimental-strip-types ./test/events.mjs && node --experimental-strip-types ./test/stale.mjs && node --experimental-strip-types ./test/index-functions.mjs && node --experimental-strip-types ./test/tasks-panel-static.mjs && node --experimental-strip-types -e \"import('./src/index.ts')\""
   },

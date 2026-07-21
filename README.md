@@ -1,156 +1,122 @@
 # pi-tmux-task
 
-Pi extension package for Pi-session-scoped background task management with tmux.
+`pi-tmux-task` is a Pi extension package for managing background tasks in the current Pi conversation.
 
-It does **not** implement a scheduler or replace tmux. It gives Pi a simple convention:
+It is useful when Pi needs to run work that should continue in the background, such as:
 
-- **one Pi session = one tmux task session**;
-- **one logical task = one named tmux window / task slot**;
-- long-running work is started with helper scripts and observed by the Pi extension.
+- development servers;
+- watch commands;
+- long-running tests, builds, or scans;
+- log tails;
+- delayed follow-up checks;
+- parallel background subtasks.
 
-## What you get
+The package uses `tmux` underneath, but users do not need to manage tmux sessions directly. In normal use, just ask Pi to run something as a background task.
 
-- Agent skill: `tmux-task-manager`
-  - Guides the agent to use background tasks for dev servers, watch commands, long tests, scans, reminders, recurring checks, and log tails.
-- Slash command: `/tmux-tasks`
-  - Opens a task panel in TUI mode, or prints a text summary without TUI.
-- Bash integration:
-  - Every Pi `bash` call receives `PI_TMUX_SESSION=<current-session-task-session>`.
-- Helper CLI:
-  - `pi-tmux-task-run`
-- Task notifications:
-  - Task exit, terminal bell, input wait, and unexpected disappearance can notify the active Pi conversation.
+[中文说明](README_ZH.md)
 
-## Session naming
+## Features
 
-The tmux session name is:
+- **Background task convention**: one Pi conversation maps to one tmux task session; one logical task maps to one tmux window.
+- **Task notifications**: task exit, terminal bell, input wait, or unexpected disappearance can notify the active Pi conversation.
+- **Task inspection and management**: `/tmux-tasks` shows tasks, previews output, prunes exited task windows, and can kill tasks.
+- **Conversation isolation**: different Pi conversations use different task sessions.
+- **Automatic cleanup**: inactive task sessions are cleaned up when safe; active tasks are preserved.
 
-```text
-pi-<project-slug>-<session-id>
-```
+## Included resources
 
-Example:
+- **Pi extension**: `src/index.ts`
+  - injects `PI_TMUX_SESSION` for the current conversation;
+  - polls tmux task state;
+  - sends task event notifications;
+  - registers `/tmux-tasks`.
 
-```text
-pi-pi-tmux-task-019e4988-b257-7be4-a6f7-b945f8fb7d36
-```
+- **Skill**: `skills/tmux-task-manager/SKILL.md`
+  - teaches the agent when to use background tasks;
+  - defines task naming, inspection, notification handling, and cleanup rules.
 
-`project-slug` comes from the current directory basename. The full Pi session id scopes tasks to one Pi conversation.
+- **Skill helper script**: `skills/tmux-task-manager/tmux-task-run.sh`
+  - bundled with the skill;
+  - called by the agent via the skill-relative path;
+  - not intended as a user-facing global command.
 
-Because the slug uses only the basename, different checkout paths with the same directory name share the same project prefix. Startup cleanup and notices are best-effort by project slug, not strict absolute-path ownership.
-
-## Installation
-
-Install the package with Pi:
-
-```bash
-pi install npm:pi-tmux-task
-```
-
-To pin a specific version:
-
-```bash
-pi install npm:pi-tmux-task@0.1.0
-```
-
-For project-local installation, write the package entry to `.pi/settings.json`:
-
-```bash
-pi install -l npm:pi-tmux-task
-```
-
-You can also try the package for one Pi run without saving it to settings:
-
-```bash
-pi -e npm:pi-tmux-task
-```
-
-This package requires `tmux` to be available on `PATH`. After installation, Pi loads the bundled extension and the `tmux-task-manager` skill from the package.
+- **Slash command**: `/tmux-tasks`
+  - user-facing command for viewing and managing background tasks in the current Pi conversation.
 
 ## Usage
 
-Ask Pi to run long-lived work in the background, for example:
+After installation, ask Pi for background work in natural language:
 
 ```text
-Start the dev server as a background task.
+Start the dev server in the background.
 ```
 
-The bundled skill guides the agent to use a Pi-session-scoped tmux session for dev servers, watch commands, long tests, scans, reminders, recurring checks, and log tails.
-
-Start or rerun a background task manually:
-
-```bash
-pi-tmux-task-run api-server -- 'npm run dev'
+```text
+Run the long test suite and tell me when it finishes.
 ```
 
-If running from this repository without installing the package bin links:
-
-```bash
-./skills/tmux-task-manager/tmux-task-run.sh api-server -- 'npm run dev'
+```text
+Watch the worker logs and notify me if there is an error.
 ```
 
-Inside Pi, the extension injects `PI_TMUX_SESSION` into bash tool calls, so helper commands automatically target the current conversation's task session.
-
-`pi-tmux-task-run` intentionally does not compute or guess the session name. If `PI_TMUX_SESSION` is missing, fix the Pi extension/environment instead of exporting an ad-hoc value.
-
-Inspect tasks in Pi:
+View current background tasks:
 
 ```text
 /tmux-tasks
 ```
 
-Clean dead/exited task windows without touching running tasks:
+Prune exited task windows:
 
 ```text
 /tmux-tasks prune-dead
 ```
 
-Kill the entire current Pi task session after confirmation:
+Kill all background tasks for the current conversation:
 
 ```text
 /tmux-tasks kill-all
 ```
 
-Inspect tmux directly:
+## Installation
 
 ```bash
-tmux list-windows -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}'
-tmux capture-pane -pt @12 -S -80
+pi install npm:pi-tmux-task
 ```
 
-## Cleanup behavior
+Pin a version:
 
-Pi shutdown cleans up the current tmux task session when it has no active tasks. Sessions that are missing, empty, or contain only dead/exited task windows are removed automatically. If any task is still active, the session is preserved so long-running work can continue after Pi exits.
+```bash
+pi install npm:pi-tmux-task@0.2.0
+```
 
-On the next Pi startup, the extension also scans same-project historical tmux sessions:
+Install locally for a project:
 
-- sessions with no active tasks are cleaned automatically;
-- sessions with active tasks are left running and reported to the user with a UI notice;
-- these startup notices are not sent to the agent conversation and do not trigger an agent turn.
+```bash
+pi install -l npm:pi-tmux-task
+```
 
-Manual cleanup remains available through `/tmux-tasks prune-dead`, `/tmux-tasks kill-all`, or direct tmux commands.
+Try it for one Pi run:
+
+```bash
+pi -e npm:pi-tmux-task
+```
+
+`tmux` must be available on the system `PATH`.
 
 ## Documentation
 
 - [Architecture and lifecycle](docs/architecture.md)
 - [Task event flow](docs/tmux-task-event-flow.md)
 
-## License
-
-MIT. See [LICENSE](LICENSE).
-
 ## Development
-
-Install dependencies:
 
 ```bash
 npm install
-```
-
-Run checks:
-
-```bash
 npm run check
 ```
 
-There is no separate build step; Pi loads the TypeScript extension source directly.
+Pi loads the TypeScript extension source directly; there is no separate build step.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
