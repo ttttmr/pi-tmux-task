@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "这个项目里我要起一个长期运行的前端开发服务，别阻塞当前回合。请按这个 skill 的后台任务约定来启动，并告诉我后续怎么查看状态和停止它。",
-      "expected_output": "明确这是后台任务管理场景；优先复用共享任务会话；强调 start / inspect / stop 的流程；任务命名有语义；不过度展开 shell 或 tmux 细节。",
+      "expected_output": "明确这是长/持续任务场景；用 helper 起一个稳定命名的 task 并记录 window_id；说明后续靠 [tmux-task notification] 观测、按需 capture、清理时只杀窗口；不阻塞当前回合；不过度展开 shell/tmux 细节。",
       "files": []
     },
     {
@@ -29,6 +29,12 @@
       "id": 5,
       "prompt": "扩展提示某个后台任务 sent a terminal notification。请基于这个 skill 解释这个通知意味着什么，以及 agent 应该如何处理。",
       "expected_output": "正确解释 terminal notification 是 bell/terminal-level signal，不等于成功/失败；建议 inspect 上下文，再决定是否需要进一步动作。",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "我已经让你把一个要跑十几分钟的构建放到后台任务里了，但结果我必须等它出来才能继续。你现在打算怎么等？请按这个 skill 的约定说明你的做法。",
+      "expected_output": "明确拒绝当前回合用 sleep + capture-pane/list-panes 轮询；说明长/异步/等待类任务都应作为 managed tmux task 运行，完成结果由 [tmux-task notification] 送达；task event 是 follow-up，只在当前回合结束后触发新回合；正确选择要么继续做其他独立工作、要么直接结束回合并等待通知，需要等待/重试的循环放进交给 helper 的命令里；不报告未观测到的进度。",
       "files": []
     }
   ]

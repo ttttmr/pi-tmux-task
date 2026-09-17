@@ -190,5 +190,23 @@
     "query": "帮我写个 README，解释团队为什么喜欢用 tmux 管理开发环境。",
     "should_trigger": false,
     "reason": "Conceptual/documentation writing about tmux, not operating this project's task convention."
+  },
+  {
+    "id": 31,
+    "query": "服务器上的 pgBackRest 备份还要跑十几分钟，我必须等它结束才能继续，不想干等。",
+    "should_trigger": true,
+    "reason": "Waiting for a long-running remote job; the skill should trigger and route the wait through a managed task / notification instead of foreground sleep."
+  },
+  {
+    "id": 32,
+    "query": "这个日志我还会继续 tail 一会儿，你边等边把其他事做了，别卡住当前回合。",
+    "should_trigger": true,
+    "reason": "Waiting on long-running monitoring work while continuing other work; foreground sleep/wait is the anti-pattern this skill owns."
+  },
+  {
+    "id": 33,
+    "query": "帮我看下这段 shell 里循环里的 sleep 30 写法有没有语法问题。",
+    "should_trigger": false,
+    "reason": "Generic shell syntax question, not background task management."
   }
 ]

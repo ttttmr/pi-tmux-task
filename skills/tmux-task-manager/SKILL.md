@@ -1,165 +1,132 @@
 ---
 name: tmux-task-manager
-description: Use this skill whenever a command should keep running in the background for the current Pi conversation and report back when it exits, rings, blocks on input, or needs follow-up. Use for dev servers, watches, long tests/builds/scans, delayed reminders, log tails, and parallel subtasks. Do not use for short foreground commands or generic tmux help.
+description: Use this skill to run long-running, continuous, monitoring, delayed, or change-watching work as a managed background task that reports back when it finishes, changes, rings, or needs attention — dev servers, watch commands, long builds/tests/scans, log tails, periodic checks, file/state watchers, and delayed reminders. Do not use for short foreground commands, generic tmux/shell help, or when the user asks to run the work in the foreground or with a non-tmux mechanism.
 ---
 
 # Pi Session Task Manager
 
-Use this skill to start and observe background work for the **current Pi conversation**.
+Use this skill for work that should keep running instead of blocking the conversation, and that Pi should report back on. Start it as a managed task, then continue other work or end the turn; act on the notification.
 
-## Golden path
+## When to use it
 
-Run the helper script bundled with this skill, with a stable task name and the command:
+| Work | Examples |
+| --- | --- |
+| Long-running task | a slow build, a full test suite, a large scan, a migration |
+| Continuous or maintained task | a dev server, a watch command, `tail -f`, a runtime you keep available |
+| Monitoring task | check a service, queue, job, disk, or log on an interval |
+| Change watcher | watch a file, state, or endpoint and act when it changes |
+| Delayed task or reminder | "remind me in 10 minutes", run X after a delay |
+
+If the work is long, recurring, or something you would otherwise wait or poll for, it belongs here — unless the user explicitly asked to run it in the foreground or with a non-tmux mechanism. Pi sends a `[tmux-task notification]` when the task finishes, rings, blocks on input, or disappears.
+
+## Start a task
+
+One named task per logical task:
 
 ```bash
 /path/to/this-skill/tmux-task-run.sh <task-name> -- '<command>'
 ```
 
-Resolve `tmux-task-run.sh` relative to this `SKILL.md` and use that absolute path in bash commands. Do not rely on a `PATH` command and do not search the filesystem for another copy.
+Resolve `tmux-task-run.sh` relative to this `SKILL.md` and use that absolute path; do not rely on a `PATH` command and do not search for another copy. The command runs in your current directory, and its output stays readable after it exits.
 
-That is all. The helper automatically:
+Task names: letters, numbers, `.`, `_`, `-`; max 40 chars. Reuse the same name to rerun the same logical task — the helper reuses or replaces the window. A retry or another round is still the same task: do not add `-2`, `-3`, or `-retry`.
 
-- reads the injected `$PI_TMUX_SESSION`;
-- creates the tmux session if it does not exist;
-- creates or reuses the named task window;
-- runs the command from your current directory;
-- keeps the window after exit so output can be inspected;
-- lets Pi send a notification when the task exits, rings, disappears, or waits for input.
+```bash
+/path/to/this-skill/tmux-task-run.sh full-build -- 'pnpm build'
+/path/to/this-skill/tmux-task-run.sh dev-server -- 'pnpm dev'
+/path/to/this-skill/tmux-task-run.sh queue-drain -- 'while ./queue-busy; do sleep 60; done; echo "queue drained"'
+/path/to/this-skill/tmux-task-run.sh health-watch -- 'state=up; while true; do if curl -fsS http://127.0.0.1:3000/health; then state=up; elif [ "$state" = up ]; then printf "\a"; state=down; fi; sleep 60; done'
+/path/to/this-skill/tmux-task-run.sh reminder-review -- 'sleep 600; echo "time to review"'
+/path/to/this-skill/tmux-task-run.sh watch-config -- './wait-for-change.sh config.json'
+```
 
 Record the helper output:
 
 ```text
 session=...
-session_created=true|false
 window_id=...
 task=...
 cwd=...
 ```
 
-## Error rule
+## Never wait in the foreground
 
-Only handle this environment error yourself:
+The task does the waiting; you get told. `[tmux-task notification]` is delivered as a follow-up, so it arrives and starts a new turn after your current turn ends.
 
-- If `$PI_TMUX_SESSION` is missing or empty, stop and report that the Pi task environment was not injected.
-
-Do **not** preflight or repair tmux sessions. If `$PI_TMUX_SESSION` is set, call the helper and let it manage the session.
-
-Do not:
-
-- run `tmux ls` to pick another session;
-- run `tmux has-session` and then replace `$PI_TMUX_SESSION`;
-- invoke the helper as `PI_TMUX_SESSION=<guessed-session> tmux-task-run.sh ...`;
-- copy a session name from another conversation.
-
-If the helper itself fails, report the helper error instead of guessing a fix. If the helper script path from this skill is not available, report a Pi skill/package installation problem instead of locating another copy manually.
-
-## Missing session/window states
-
-Treat tmux target errors as task state, not as a reason to guess or repair names:
-
-| Observation | Meaning | Action |
-| --- | --- | --- |
-| `$PI_TMUX_SESSION` is empty | Pi task environment was not injected | Stop and report the environment problem |
-| `$PI_TMUX_SESSION` is set, but tmux says `can't find session: pi-...` | No task tmux session exists yet for this Pi conversation, or it was already cleaned up | This is normal when no background task is active. Start new background work with the helper; do not create/guess/repair the session yourself |
-| tmux says `can't find window: @12` | The recorded task window is gone, killed, or replaced | List current task windows once if orientation is needed; do not keep capturing the stale `window_id` |
-| tmux says `can't find window: pi-...` | A session name was used where a window target was expected | Use `tmux list-windows -t "$PI_TMUX_SESSION"` for session-level listing, or `tmux capture-pane -pt @12` for a recorded window |
-
-When resuming work from an older Pi conversation, do not assume that conversation's tmux task session still exists. Recover state from the transcript or current project files; if more background work is needed, start a new task in the current Pi conversation.
-
-## Task names
-
-Use one stable task name per logical task. Keep it short: letters, numbers, `.`, `_`, `-`, max 40 chars.
-
-Examples:
+- Never wait for progress or completion with foreground `sleep`, `capture-pane` loops, or `pane_dead` polling — not even once:
 
 ```bash
-/path/to/this-skill/tmux-task-run.sh api-server -- 'pnpm dev'
-/path/to/this-skill/tmux-task-run.sh web-build -- 'pnpm --filter @echo/web build'
-/path/to/this-skill/tmux-task-run.sh log-tail -- 'tail -f logs/app.log'
-```
-
-Use the same task name to rerun the same logical task; the helper handles window reuse/replacement.
-
-## Let tmux own the wait
-
-Use tmux for the whole background lifecycle, not just for starting a monitor. If the next useful step depends on time passing or another job finishing, put that wait and follow-up inside the managed task.
-
-Short foreground sleeps are okay only as a startup grace or race guard, for example `sleep 2; tmux capture-pane -pt @12 -S -80` after launching a task.
-
-Do not repeatedly wait in the foreground with commands like:
-
-```bash
+sleep 120
 sleep 60; tmux capture-pane -pt @12 -S -120
-sleep 120; ./check-status
+while ! tmux list-panes -s -t "$PI_TMUX_SESSION" -F '#{pane_dead}' | grep -q 1; do sleep 30; done
 ```
 
-If waiting, retrying, polling, or follow-up collection is part of the work, put that loop inside a managed task or wait for the `[tmux-task notification]`.
-
-Do this:
+- The only allowed check is a single ~5s startup confirmation, in the launch call or the call immediately after it: `sleep 1; tmux capture-pane -pt @12 -S -40`.
+- If checking, retrying, or following up is part of the work, put that loop inside the task command, so the task exits only when the real work happens:
 
 ```bash
 /path/to/this-skill/tmux-task-run.sh eval-finish -- 'while ! ./is-done; do ./print-status; sleep 300; done; ./collect-results'
+/path/to/this-skill/tmux-task-run.sh remote-job -- 'ssh host "while pgrep -f backup >/dev/null; do sleep 60; done; cat /var/log/backup.out"'
 ```
 
-Not this:
+- Otherwise continue other work, or end the turn. Ending the turn is not dropping the task: the notification starts a new turn where you read the pane and report. Never report progress you did not observe.
 
-```bash
-/path/to/this-skill/tmux-task-run.sh eval-monitor -- './monitor-status'
-sleep 600; ./collect-results
-```
+## Notifications
 
-After starting a managed task, prefer continuing other safe work or waiting for the `[tmux-task notification]`.
+A task reports back by exiting, ringing, blocking on input, or disappearing. Write the task so it signals at the moment you care about:
 
-## Inspect
+| Goal | In the task |
+| --- | --- |
+| Long task finished | exit normally; the `exited` notification carries the result |
+| Reminder after a delay | `sleep N; echo ...` and exit |
+| Watch for a change | check, then exit (or ring) once the condition is met |
+| Stay running but get attention | `printf '\a'` to ring, and keep running |
+| Ask for a decision | print the prompt and wait on input |
 
-Prefer the recorded `window_id`:
+Two things to know when you write the task:
+
+- A ring notifies once every time it happens, so ring on a state change, not on every poll. `health-watch` above rings only when the service goes from up to down.
+- `input` notifications only cover recognizable prompts (`Proceed? [y/N]`, `(y/n)`, `password:`, `continue?`, `press enter to continue`, `select an option`, `choice:`). A custom prompt just sits there silently.
+
+Treat `[tmux-task notification]` as task state, not as a new user request:
+
+- `exited`: inspect and consume the result. Do not restart an expected one-shot task.
+- `notify`: inspect the output before deciding.
+- `input`: answer only if it is safe and obvious; ask for secrets or destructive choices.
+- `disappeared`: verify whether the task was killed or replaced.
+
+If you already consumed a notification for the same task/window/attempt, treat later duplicates as already handled.
+
+## Inspect and clean up
+
+Inspect when a notification arrives or you need orientation — not on a loop. Prefer the recorded `window_id`:
 
 ```bash
 tmux capture-pane -pt @12 -S -120
 ```
 
-List current task windows only when you need orientation:
+List current tasks only when you need orientation:
 
 ```bash
 tmux list-windows -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}'
 tmux list-panes -s -t "$PI_TMUX_SESSION" -F '#{window_id}\t#{window_name}\t#{pane_dead}\t#{pane_dead_status}\t#{pane_current_command}'
 ```
 
-Do not use the session name as a pane/window target:
+The session name is not a pane/window target:
 
 ```bash
-# Wrong: session name is not a window id
+# Wrong
 tmux capture-pane -pt "$PI_TMUX_SESSION" -S -120
 ```
 
-## Notifications
-
-Treat `[tmux-task notification]` as task state, not as a new user request.
-
-- `exited`: inspect/consume the result. Do not restart an expected one-shot task.
-- `notify`: inspect output before deciding.
-- `input`: answer only if safe and obvious; ask for secrets/destructive choices.
-- `disappeared`: verify whether the task was killed/replaced.
-
-If you already consumed a notification for the same task/window/attempt, mark later duplicates as already handled and continue the current user-facing gate.
-
-## Cleanup
-
-After a completed task is consumed, remove only that task window:
+After a task is consumed, kill only its window; kill the whole session only with explicit user approval:
 
 ```bash
 tmux kill-window -t @12
 ```
 
-Do not kill the whole tmux session unless the user explicitly approves.
+## If the task environment is unavailable
 
-## Checklist
+`$PI_TMUX_SESSION` is the only task-routing variable and is injected for you. If it is missing, stop and report it — do not compute, guess, repair, or copy a session name.
 
-1. Is this actually background work? If not, run it foreground.
-2. Is `$PI_TMUX_SESSION` non-empty? If not, stop and report environment injection failure.
-3. `cd` to the desired task cwd.
-4. Run this skill's helper script: `/path/to/this-skill/tmux-task-run.sh <task-name> -- '<command>'`.
-5. Record `session`, `session_created`, `window_id`, `task`, and `cwd`.
-6. Use only short foreground grace checks; put long/repeated waits inside a managed task.
-7. If a session/window is missing, classify it using the table above before acting.
-8. On notifications, consume/route/cleanup without treating them as new user requests.
+A missing session or window is task state, not a name problem: start new work with the helper, or list current windows once with `tmux list-windows -t "$PI_TMUX_SESSION"`. If the helper itself fails, report its error instead of guessing a fix.

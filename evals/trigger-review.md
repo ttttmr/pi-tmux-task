@@ -2,22 +2,23 @@
 
 Skill: tmux-task-manager
 
-This set now contains 30 realistic prompts:
-- 10 should trigger
-- 20 should not trigger
+This set now contains 35 realistic prompts:
+- 14 should trigger
+- 21 should not trigger
 
 ## Coverage
 
 ### Should trigger
-- long-running background work in the current project
-- project task-management requests backed by tmux under the hood
-- rerun / reuse / notification / naming semantics
+- long-running, continuous/maintained, monitoring, or change-watching work
+- waiting on long-running work that should be routed to a managed task
+- task start / rerun / inspect / notification handling
+- rerun / reuse / naming semantics
 
 ### Should not trigger
 - generic tmux tutorials and concept questions
-- generic shell/scripting/admin tasks
+- generic shell/scripting/admin tasks, including generic `sleep` syntax questions
 - explicit non-tmux choices such as nohup/systemd/foreground execution
-- remote tmux usage unrelated to the current project convention
+- inspecting or attaching to remote tmux sessions (waiting on a remote long job does trigger)
 - extension implementation tasks rather than operator workflow
 
 ## Notes

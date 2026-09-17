@@ -82,12 +82,14 @@ Important conventions encoded by the skill:
 - Treat long-running or non-blocking work as a background task management problem, not a generic tmux tutorial problem.
 - Use the injected `$PI_TMUX_SESSION`.
 - Do not compute, guess, or repair the session name if the env var is missing; report an extension/environment problem instead.
+- Work the agent launches runs as a managed tmux task; completion arrives as a notification and is never obtained by polling. A managed task already in flight is waited on by ending the turn, never by foreground `sleep`.
 - Use **one task slot per logical task**.
 - Give tasks concise but meaningful stable names like `frontend-dev`, `api-server`, `worker-sync`, `scan-deps`, `tests-watch`.
 - When rerunning the same task, prefer reusing the existing task slot so the `window_id` stays stable when possible; replace the slot only when reuse is not practical.
 - The same skill also covers delayed and recurring background work, such as "continue this in 10 minutes" or "check this every 10 minutes and notify me".
+- Waiting is part of the task, not the agent turn: foreground `sleep` polling is forbidden, the only exception is a single ~5s startup grace check in the launch call or the call immediately after it. Completion is observed through `[tmux-task notification]` — a follow-up that starts a new turn after the current turn ends (or immediately when the session is idle) — or through a wait/follow-up loop placed inside the managed task.
 - Use tmux as the underlying runtime and inspection mechanism when needed.
-- Intended trigger boundary: long-running background task handling should trigger it; generic tmux help and short foreground commands should not.
+- Intended trigger boundary: long-running background task handling and waiting on long-running work should trigger it; generic tmux help, generic shell `sleep` questions, and short foreground commands should not.
 
 ### 2) Pi-session-scoped tmux session naming
 Implemented mainly in:
@@ -173,7 +175,7 @@ Notification behavior:
   - `tmux task @12 (frontend-dev) is waiting for input: Proceed? [y/N]`
   - `tmux task @12 (frontend-dev) disappeared from session`
 - Suppress `started` messages from the conversation; task launch success is expected to be visible in the initiating tool output.
-- Events sent to the conversation are posted with `pi.sendMessage(...)` and auto-trigger an agent turn.
+- Events sent to the conversation are posted with `pi.sendMessage(...)` and auto-trigger an agent turn (as a follow-up while a turn is running; immediately when idle).
 - `started` events are surfaced only as UI notices.
 - Input-waiting notifications are deduplicated to avoid repeated spam.
 - Note: `disappeared` means the previously observed tmux window is gone from the session; it is a window-level disappearance, not necessarily a normal process exit.
