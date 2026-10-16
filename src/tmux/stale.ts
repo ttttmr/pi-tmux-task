@@ -1,23 +1,11 @@
 import type { TmuxSnapshot } from "../types.ts";
 
-export type PiSessionTitleSource = {
-  id: string;
-  name?: string;
-  firstMessage?: string;
-};
-
-export type StalePiSessionTitle = {
-  id: string;
-  title: string;
-  source: "name" | "title";
-};
-
 export type StaleTmuxSessionSummary = {
   sessionName: string;
   activeCount: number;
   deadCount: number;
   taskNames: string[];
-  piSessionTitle?: StalePiSessionTitle;
+  piSessionTitle?: string;
 };
 
 export type StaleTmuxSessionCleanupPlan = {
@@ -58,14 +46,6 @@ export function summarizeStaleTmuxSessions(snapshots: TmuxSnapshot[]): StaleTmux
   return plan;
 }
 
-export function piSessionIdFromTmuxSessionName(sessionName: string, projectSlug: string): string | undefined {
-  const prefix = `pi-${projectSlug}-`;
-  if (!sessionName.startsWith(prefix)) return undefined;
-
-  const sessionId = sessionName.slice(prefix.length);
-  return sessionId.length > 0 ? sessionId : undefined;
-}
-
 function truncateText(text: string, maxLength: number): string {
   return text.length <= maxLength ? text : `${text.slice(0, maxLength - 1)}…`;
 }
@@ -76,27 +56,18 @@ function normalizeTitle(text: string | undefined): string | undefined {
   return truncateText(title, 80);
 }
 
-function titleForPiSession(session: PiSessionTitleSource): StalePiSessionTitle | undefined {
-  const name = normalizeTitle(session.name);
-  if (name) return { id: session.id, title: name, source: "name" };
-
-  const title = normalizeTitle(session.firstMessage);
-  if (title) return { id: session.id, title, source: "title" };
-
-  return undefined;
+/** Title shown for a Pi session: its display name, else its first user message. */
+export function resolvePiSessionTitle(name: string | undefined, firstUserMessage: string | undefined): string | undefined {
+  return normalizeTitle(name) ?? normalizeTitle(firstUserMessage);
 }
 
+/** `titlesBySessionName` comes from tmux (`@pi_session_title`), never from Pi session files. */
 export function attachPiSessionTitlesToStaleTmuxSessions(
   active: StaleTmuxSessionSummary[],
-  projectSlug: string,
-  piSessions: PiSessionTitleSource[],
+  titlesBySessionName: Map<string, string>,
 ): StaleTmuxSessionSummary[] {
-  const piSessionsById = new Map(piSessions.map((session) => [session.id, session]));
-
   return active.map((summary) => {
-    const piSessionId = piSessionIdFromTmuxSessionName(summary.sessionName, projectSlug);
-    const piSession = piSessionId ? piSessionsById.get(piSessionId) : undefined;
-    const piSessionTitle = piSession ? titleForPiSession(piSession) : undefined;
+    const piSessionTitle = normalizeTitle(titlesBySessionName.get(summary.sessionName));
     return piSessionTitle ? { ...summary, piSessionTitle } : summary;
   });
 }
@@ -108,9 +79,9 @@ function formatTaskNames(taskNames: string[]): string {
   return ` (${shown}${extra})`;
 }
 
-function formatPiSessionTitle(piSessionTitle: StalePiSessionTitle | undefined): string {
+function formatPiSessionTitle(piSessionTitle: string | undefined): string {
   if (!piSessionTitle) return "";
-  return ` (${piSessionTitle.title})`;
+  return ` (${piSessionTitle})`;
 }
 
 export function formatStaleTmuxSessionNotice(projectSlug: string, cleanedCount: number, active: StaleTmuxSessionSummary[]): string | undefined {

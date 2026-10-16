@@ -3,7 +3,7 @@ import {
   attachPiSessionTitlesToStaleTmuxSessions,
   filterSameProjectTmuxSessions,
   formatStaleTmuxSessionNotice,
-  piSessionIdFromTmuxSessionName,
+  resolvePiSessionTitle,
   summarizeStaleTmuxSessions,
 } from '../src/tmux/stale.ts';
 
@@ -58,58 +58,29 @@ assert.deepEqual(plan.active, [
   },
 ]);
 
-assert.equal(piSessionIdFromTmuxSessionName('pi-repo-019eb012-5374-7a2d-b977-8ea7a3c95b45', 'repo'), '019eb012-5374-7a2d-b977-8ea7a3c95b45');
-assert.equal(piSessionIdFromTmuxSessionName('pi-other-019eb012-5374-7a2d-b977-8ea7a3c95b45', 'repo'), undefined);
+assert.equal(resolvePiSessionTitle('Admin split', 'first message'), 'Admin split');
+assert.equal(resolvePiSessionTitle('   ', 'Continue  chat\nreminder'), 'Continue chat reminder');
+assert.equal(resolvePiSessionTitle(undefined, '(no messages)'), undefined);
+assert.equal(resolvePiSessionTitle(undefined, undefined), undefined);
+assert.equal(resolvePiSessionTitle(undefined, 'x'.repeat(100)), `${'x'.repeat(79)}…`);
 
 const activeWithPiSessionTitle = attachPiSessionTitlesToStaleTmuxSessions(
   [
-    {
-      sessionName: 'pi-repo-aaa',
-      activeCount: 1,
-      deadCount: 0,
-      taskNames: ['web'],
-    },
-    {
-      sessionName: 'pi-repo-bbb',
-      activeCount: 1,
-      deadCount: 0,
-      taskNames: ['api'],
-    },
-    {
-      sessionName: 'pi-repo-ccc',
-      activeCount: 1,
-      deadCount: 0,
-      taskNames: ['worker'],
-    },
+    { sessionName: 'pi-repo-aaa', activeCount: 1, deadCount: 0, taskNames: ['web'] },
+    { sessionName: 'pi-repo-bbb', activeCount: 1, deadCount: 0, taskNames: ['api'] },
+    { sessionName: 'pi-repo-ccc', activeCount: 1, deadCount: 0, taskNames: ['worker'] },
   ],
-  'repo',
-  [
-    { id: 'aaa', name: 'Admin split' },
-    { id: 'bbb', firstMessage: 'Continue chat reminder' },
-    { id: 'ccc', name: '   ', firstMessage: '(no messages)' },
-  ],
+  new Map([
+    ['pi-repo-aaa', 'Admin split'],
+    ['pi-repo-bbb', 'Continue chat reminder'],
+    ['pi-repo-ccc', '   '],
+    ['pi-repo-unrelated', 'Not listed'],
+  ]),
 );
 assert.deepEqual(activeWithPiSessionTitle, [
-  {
-    sessionName: 'pi-repo-aaa',
-    activeCount: 1,
-    deadCount: 0,
-    taskNames: ['web'],
-    piSessionTitle: { id: 'aaa', title: 'Admin split', source: 'name' },
-  },
-  {
-    sessionName: 'pi-repo-bbb',
-    activeCount: 1,
-    deadCount: 0,
-    taskNames: ['api'],
-    piSessionTitle: { id: 'bbb', title: 'Continue chat reminder', source: 'title' },
-  },
-  {
-    sessionName: 'pi-repo-ccc',
-    activeCount: 1,
-    deadCount: 0,
-    taskNames: ['worker'],
-  },
+  { sessionName: 'pi-repo-aaa', activeCount: 1, deadCount: 0, taskNames: ['web'], piSessionTitle: 'Admin split' },
+  { sessionName: 'pi-repo-bbb', activeCount: 1, deadCount: 0, taskNames: ['api'], piSessionTitle: 'Continue chat reminder' },
+  { sessionName: 'pi-repo-ccc', activeCount: 1, deadCount: 0, taskNames: ['worker'] },
 ]);
 
 assert.equal(formatStaleTmuxSessionNotice('repo', 0, []), undefined);

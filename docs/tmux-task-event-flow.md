@@ -219,7 +219,7 @@ Delivery matrix:
 |---|---|---|
 | only `started` | `ctx.ui.notify(...)` | No |
 | `exited` / `notify` / `input` / `disappeared` | `pi.sendMessage(...)` with `[tmux-task notification]` | Yes, as `followUp` |
-| historical active sessions at startup | `ctx.ui.notify(...)`, enriched with Pi session display name/title when available | No |
+| historical active sessions at startup | `ctx.ui.notify(...)`, enriched with the Pi session title stored in tmux (`@pi_session_title`) when available | No |
 | stale inactive cleanup at startup | `ctx.ui.notify(...)` | No |
 | `/tmux-tasks` TUI actions | panel UI or `ctx.ui.notify(...)` | No |
 

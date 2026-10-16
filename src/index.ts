@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { isToolCallEventType, SessionManager } from "@earendil-works/pi-coding-agent";
+import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 import type { TmuxSnapshot, TmuxTaskSnapshot } from "./types.ts";
 import { computeTmuxSessionName, projectSlugForPath } from "./context.ts";
 import {
@@ -12,13 +12,20 @@ import {
   getTmuxTaskMessageOptions,
 } from "./tmux/events.ts";
 import { startTmuxPoller, type TmuxPollerHandle } from "./tmux/poller.ts";
-import { tmuxInstallBellHook, tmuxKillSession, tmuxKillWindowById, tmuxListSessions } from "./tmux/commands.ts";
+import {
+  tmuxInstallBellHook,
+  tmuxKillSession,
+  tmuxKillWindowById,
+  tmuxListSessions,
+  tmuxListSessionTitles,
+  tmuxSetSessionTitle,
+} from "./tmux/commands.ts";
 import { collectTmuxSnapshot } from "./tmux/snapshot.ts";
 import {
   attachPiSessionTitlesToStaleTmuxSessions,
   filterSameProjectTmuxSessions,
   formatStaleTmuxSessionNotice,
-  type PiSessionTitleSource,
+  resolvePiSessionTitle,
   summarizeStaleTmuxSessions,
 } from "./tmux/stale.ts";
 import { showTmuxTasksPanel } from "./ui/tasks-panel.ts";
@@ -30,6 +37,8 @@ type ManagedSession = {
   notifiedInputs: Map<string, string>;
   manuallyKilledWindowIds: Set<string>;
   bellHookInstalled: boolean;
+  firstUserMessage: string | undefined;
+  syncedTitle: string | undefined;
 };
 
 type StaleSessionNoticeState = {
@@ -189,6 +198,8 @@ function ensureManagedSession(ctx: ExtensionContext): ManagedSession {
     notifiedInputs: new Map<string, string>(),
     manuallyKilledWindowIds: new Set<string>(),
     bellHookInstalled: false,
+    firstUserMessage: undefined,
+    syncedTitle: undefined,
   };
   runtime.sessions.set(sessionId, session);
   return session;
@@ -213,17 +224,31 @@ function staleNoticeStateFor(projectSlug: string): StaleSessionNoticeState {
   return state;
 }
 
-async function listPiSessionTitleSources(ctx: ExtensionContext): Promise<PiSessionTitleSource[]> {
-  try {
-    const sessions = await SessionManager.list(ctx.cwd, ctx.sessionManager.getSessionDir());
-    return sessions.map((session) => ({
-      id: session.id,
-      name: session.name,
-      firstMessage: session.firstMessage,
-    }));
-  } catch {
-    return [];
+export function firstUserMessageText(entries: ReadonlyArray<{ type: string; message?: unknown }>): string | undefined {
+  for (const entry of entries) {
+    if (entry.type !== "message") continue;
+    const message = entry.message as { role?: string; content?: unknown } | undefined;
+    if (message?.role !== "user") continue;
+
+    const { content } = message;
+    const text = typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content.flatMap((part) => (part?.type === "text" && typeof part.text === "string" ? [part.text] : [])).join(" ")
+        : "";
+    if (text.trim()) return text;
   }
+  return undefined;
+}
+
+// Stale-session notices read this title back from tmux, so a later Pi start never has to parse Pi session files.
+async function syncPiSessionTitleToTmux(ctx: ExtensionContext, session: ManagedSession): Promise<void> {
+  const name = ctx.sessionManager.getSessionName();
+  if (!session.firstUserMessage && !name?.trim()) session.firstUserMessage = firstUserMessageText(ctx.sessionManager.getEntries());
+
+  const title = resolvePiSessionTitle(name, session.firstUserMessage);
+  if (!title || title === session.syncedTitle) return;
+  if (await tmuxSetSessionTitle(session.sessionName, title)) session.syncedTitle = title;
 }
 
 async function cleanUpInactiveCurrentSession(sessionName: string): Promise<void> {
@@ -244,7 +269,7 @@ async function cleanAndNotifyStaleProjectSessions(ctx: ExtensionContext, current
   const cleaned = cleanupResults.filter((result) => result.ok).map((result) => result.sessionName);
 
   const active = plan.active.length > 0
-    ? attachPiSessionTitlesToStaleTmuxSessions(plan.active, projectSlug, await listPiSessionTitleSources(ctx))
+    ? attachPiSessionTitlesToStaleTmuxSessions(plan.active, await tmuxListSessionTitles())
     : plan.active;
 
   for (const sessionName of cleaned) noticeState.inactive.add(sessionName);
@@ -262,6 +287,7 @@ async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, ses
   } else if (!session.bellHookInstalled) {
     session.bellHookInstalled = await tmuxInstallBellHook(session.sessionName);
   }
+  if (snapshot.exists) await syncPiSessionTitleToTmux(ctx, session);
 
   if (runtime.activeSessionId !== session.sessionId) return;
 

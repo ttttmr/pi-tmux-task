@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   annotateManualKillEvents,
+  firstUserMessageText,
   hasActiveTmuxTasks,
   shouldCleanUpTmuxSessionOnShutdown,
   taskFromStartedOutput,
@@ -16,6 +17,19 @@ assert.equal(task.paneStateKnown, false);
 assert.equal(taskFromStartedOutput(output, 'pi-project-hash-bbb'), undefined);
 assert.equal(taskFromStartedOutput('window_id=@13\ntask=legacy\n', 'pi-project-hash-aaa'), undefined);
 assert.equal(taskFromStartedOutput('window_id=@13\ntask=legacy\n')?.windowName, 'legacy');
+
+assert.equal(firstUserMessageText([]), undefined);
+assert.equal(
+  firstUserMessageText([
+    { type: 'thinking_level_change' },
+    { type: 'message', message: { role: 'assistant', content: 'ignored' } },
+    { type: 'message', message: { role: 'user', content: '   ' } },
+    { type: 'message', message: { role: 'user', content: [{ type: 'image' }, { type: 'text', text: 'hello' }, { type: 'text', text: 'world' }] } },
+    { type: 'message', message: { role: 'user', content: 'later' } },
+  ]),
+  'hello world',
+);
+assert.equal(firstUserMessageText([{ type: 'message', message: { role: 'user', content: 'plain string' } }]), 'plain string');
 
 const disappearedEvent = {
   type: 'disappeared',

@@ -31,7 +31,7 @@
   ],
   "type": "module",
   "scripts": {
-    "check": "./test/tmux-integration.sh && node --experimental-strip-types ./test/context.mjs && node --experimental-strip-types ./test/events.mjs && node --experimental-strip-types ./test/stale.mjs && node --experimental-strip-types ./test/index-functions.mjs && node --experimental-strip-types ./test/tasks-panel-static.mjs && node --experimental-strip-types -e \"import('./src/index.ts')\""
+    "check": "./test/tmux-integration.sh && node --experimental-strip-types ./test/context.mjs && node --experimental-strip-types ./test/events.mjs && node --experimental-strip-types ./test/stale.mjs && node --experimental-strip-types ./test/session-title.mjs && node --experimental-strip-types ./test/index-functions.mjs && node --experimental-strip-types ./test/tasks-panel-static.mjs && node --experimental-strip-types -e \"import('./src/index.ts')\""
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

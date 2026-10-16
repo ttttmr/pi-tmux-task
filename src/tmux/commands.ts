@@ -4,6 +4,7 @@ import type { TmuxPaneInfo, TmuxWindowInfo } from "../types.ts";
 import { parseListPanes, parseListWindows, TMUX_FIELD_SEPARATOR } from "./parse.ts";
 
 const BELL_HOOK_NAME = "alert-bell[9010]";
+const SESSION_TITLE_OPTION = "@pi_session_title";
 
 const execFileAsync = promisify(execFile);
 
@@ -32,6 +33,26 @@ export async function tmuxListSessions(): Promise<string[]> {
   const result = await runTmux(["list-sessions", "-F", "#{session_name}"]);
   if (result.code !== 0) return [];
   return result.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+/** tmux session name -> Pi session title stored by `tmuxSetSessionTitle`; sessions without a title are omitted. */
+export async function tmuxListSessionTitles(): Promise<Map<string, string>> {
+  const titles = new Map<string, string>();
+  const result = await runTmux(["list-sessions", "-F", `#{session_name}${TMUX_FIELD_SEPARATOR}#{${SESSION_TITLE_OPTION}}`]);
+  if (result.code !== 0) return titles;
+
+  for (const line of result.stdout.split(/\r?\n/)) {
+    const separatorIndex = line.indexOf(TMUX_FIELD_SEPARATOR);
+    if (separatorIndex < 0) continue;
+    const title = line.slice(separatorIndex + TMUX_FIELD_SEPARATOR.length).trim();
+    if (title) titles.set(line.slice(0, separatorIndex), title);
+  }
+  return titles;
+}
+
+export async function tmuxSetSessionTitle(sessionName: string, title: string): Promise<boolean> {
+  const result = await runTmux(["set-option", "-t", sessionName, SESSION_TITLE_OPTION, title]);
+  return result.code === 0;
 }
 
 export async function tmuxListWindows(sessionName: string): Promise<TmuxWindowInfo[]> {
