@@ -1,11 +1,11 @@
-import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import type { TmuxSnapshot, TmuxTaskSnapshot } from "../types.ts";
-import { extractInputPrompt } from "../tmux/events.ts";
+import { formatTmuxTaskStatus, formatTmuxTaskSummary } from "./tasks-overview.ts";
 import { tmuxKillWindowById } from "../tmux/commands.ts";
 
 type ShowTmuxTasksPanelOptions = {
-  ctx: ExtensionCommandContext;
+  ctx: ExtensionContext;
   sessionName: string;
   initialSnapshot: TmuxSnapshot;
   refresh: () => Promise<TmuxSnapshot>;
@@ -15,16 +15,6 @@ type ShowTmuxTasksPanelOptions = {
 
 function formatTaskRef(task: TmuxTaskSnapshot): string {
   return `${task.windowId} (${task.windowName})`;
-}
-
-function formatTaskStatus(task: TmuxTaskSnapshot, theme: any): string {
-  const prompt = extractInputPrompt(task.outputPreview);
-  if (!task.paneStateKnown) return theme.fg("dim", "unknown");
-  if (!task.dead && prompt) return theme.fg("warning", "input");
-  if (!task.dead && (task.bell || (task.bellCount ?? 0) > 0)) return theme.fg("accent", "notify");
-  if (!task.dead) return theme.fg("success", "running");
-  const text = `exit ${task.exitCode ?? "?"}`;
-  return task.exitCode === 0 ? theme.fg("dim", text) : theme.fg("warning", text);
 }
 
 function padToWidth(text: string, width: number, align: "left" | "right" = "left"): string {
@@ -114,7 +104,7 @@ function renderTaskTable(tasks: TmuxTaskSnapshot[], selectedIndex: number, width
       " ".repeat(gap),
       padToWidth(theme.fg("dim", task.currentCommand ?? "-"), commandWidth),
       " ".repeat(gap),
-      padToWidth(formatTaskStatus(task, theme), statusWidth),
+      padToWidth(formatTmuxTaskStatus(task, theme), statusWidth),
     ];
 
     if (previewWidth > 0) {
@@ -149,7 +139,7 @@ function renderDetails(task: TmuxTaskSnapshot | undefined, width: number, theme:
     makeSectionHeader("selected task", width, theme),
     makeContentLine(`${theme.fg("dim", "name    ")} ${task.windowName}`, width),
     makeContentLine(`${theme.fg("dim", "command ")} ${theme.fg("dim", task.currentCommand ?? "-")}`, width),
-    makeContentLine(`${theme.fg("dim", "status  ")} ${formatTaskStatus(task, theme)}`, width),
+    makeContentLine(`${theme.fg("dim", "status  ")} ${formatTmuxTaskStatus(task, theme)}`, width),
     makeContentLine(`${theme.fg("dim", "window  ")} ${task.windowId}`, width),
     makeContentLine(`${theme.fg("dim", "pane    ")} ${task.paneId ?? "-"}`, width),
     makeContentLine(`${theme.fg("dim", "cwd     ")} ${theme.fg("dim", task.taskCwd ?? "-")}`, width),
@@ -255,6 +245,7 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
           lines.push(makeBorderLine(width, "╭", "─", "╮"));
           lines.push(makeContentLine(theme.fg("accent", theme.bold("Tmux Tasks")), width));
           lines.push(makeContentLine(theme.fg("dim", sessionName), width));
+          if (snapshot.exists) lines.push(makeContentLine(formatTmuxTaskSummary(snapshot.tasks, theme), width));
           lines.push(makeContentLine("", width));
 
           if (!snapshot.exists) {
@@ -297,6 +288,10 @@ export async function showTmuxTasksPanel({ ctx, sessionName, initialSnapshot, re
           lines.push(makeContentLine(hint, width));
           lines.push(makeBorderLine(width, "╰", "─", "╯"));
           return lines.map((line) => truncateToWidth(line, width));
+        },
+        dispose() {
+          if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+          autoRefreshTimer = undefined;
         },
         invalidate() {},
         handleInput(data: string) {

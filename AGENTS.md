@@ -118,7 +118,7 @@ Implemented mainly in:
 - `src/ui/tasks-panel.ts`
 
 Current UI surfaces:
-- **Status area**: shows `tmux: N tasks` only when the configured task tmux session exists.
+- **Task overview** (`src/ui/tasks-overview.ts`): original footer status via `ctx.ui.setStatus("tmux-task", ...)` with total/running/failed counts; omit zero counts and hide an empty task list (e.g. `tmux:5-3-1`). Running includes input/notify and unconfirmed panes; failed counts only confirmed nonzero exits. Use the surrounding usage row’s dim color for the prefix/total/hyphens, yellow for running, and red for failed, without bold. Omit zero fields together with their preceding hyphen. Preserve the active footer; the user’s inline-metrics-footer renders status in the usage row. `--no-extensions` disables that layout unless it is explicitly loaded with `-e`. It is visible only when the task session exists. Compatible footers emit `tmux-task:open-panel` on the shared `pi.events` bus when the visible task text is clicked. The task extension opens the active session panel and removes its listener on shutdown/reload. The native footer is text-only; `Alt+T` opens the panel in both terminal modes. Do not move task stats into an editor widget. Requires Pi 1.4.0+. The panel retains all detailed task states and status counts.
 - **Command**: `/tmux-tasks`
   - list windows/tasks
   - show current command and running/dead state

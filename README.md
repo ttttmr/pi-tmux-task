@@ -59,7 +59,9 @@ Run the long test suite and tell me when it finishes.
 Watch the worker logs and notify me if there is an error.
 ```
 
-View current background tasks:
+The original footer status area shows `tmux:5-3-1`. The fields are total-running-failed. Zero counts and their preceding hyphens are omitted; an empty task list hides the status. Running includes tasks waiting for input, tasks with notifications, and panes whose state is not yet confirmed. Failed counts only confirmed nonzero exits. The prefix, total, and hyphens use the same dim color as the surrounding usage text; running counts are yellow and failed counts are red. Press **Alt+T** in either terminal mode to open the task panel. With the inline metrics footer integration, clicking the tmux status in fullscreen mode opens the same task panel. The default Pi footer is text-only; use Alt+T there. Placement follows the active footer: Pi’s default footer uses a separate status row, while an inline footer can show it in the usage row. When testing with `--no-extensions`, explicitly load your inline footer extension with another `-e` to preserve that layout. The panel shows all individual task states and detailed status counts. The overview disappears when the task session no longer exists. Requires Pi 1.4.0 or newer.
+
+You can also view current background tasks with the command:
 
 ```text
 /tmux-tasks

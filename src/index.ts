@@ -29,6 +29,7 @@ import {
   summarizeStaleTmuxSessions,
 } from "./tmux/stale.ts";
 import { showTmuxTasksPanel } from "./ui/tasks-panel.ts";
+import { formatTmuxTasksOverview } from "./ui/tasks-overview.ts";
 
 type ManagedSession = {
   sessionId: string;
@@ -39,6 +40,7 @@ type ManagedSession = {
   bellHookInstalled: boolean;
   firstUserMessage: string | undefined;
   syncedTitle: string | undefined;
+  panelOpen?: boolean;
 };
 
 type StaleSessionNoticeState = {
@@ -108,9 +110,35 @@ function eventDetails(event: TmuxTaskEvent) {
   }
 }
 
-function formatStatusLine(snapshot: TmuxSnapshot | undefined): string | undefined {
-  if (!snapshot?.exists) return undefined;
-  return `tmux: ${snapshot.tasks.length} tasks`;
+async function openCurrentTmuxTasksPanel(ctx: ExtensionContext, initialSnapshot?: TmuxSnapshot): Promise<void> {
+  if (ctx.mode !== "tui") return;
+  const session = ensureManagedSession(ctx);
+  if (session.panelOpen) return;
+  session.panelOpen = true;
+  try {
+    const refresh = async () => runtime.activeSessionId === session.sessionId && runtime.activePoller
+      ? await runtime.activePoller.refreshNow()
+      : await collectTmuxSnapshot(session.sessionName);
+    const snapshot = initialSnapshot ?? await refresh();
+    if (runtime.activeSessionId !== session.sessionId || runtime.sessions.get(session.sessionId) !== session) return;
+    await showTmuxTasksPanel({
+      ctx,
+      sessionName: session.sessionName,
+      initialSnapshot: snapshot,
+      refresh,
+      onManualKill: (task) => session.manuallyKilledWindowIds.add(task.windowId),
+      onManualKillFailed: (task) => session.manuallyKilledWindowIds.delete(task.windowId),
+    });
+  } finally {
+    session.panelOpen = false;
+  }
+}
+
+function updateTmuxTasksOverview(ctx: ExtensionContext, snapshot: TmuxSnapshot | undefined): void {
+  ctx.ui.setWidget("tmux-task", undefined);
+  ctx.ui.setStatus("tmux-task", snapshot?.exists
+    ? formatTmuxTasksOverview(snapshot.tasks, ctx.mode === "tui" ? ctx.ui.theme : undefined)
+    : undefined);
 }
 
 export function hasActiveTmuxTasks(snapshot: TmuxSnapshot): boolean {
@@ -297,7 +325,7 @@ async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, ses
   const { events, nextNotifiedInputs } = filterRepeatedInputEvents(rawEvents, snapshot, session.notifiedInputs);
   session.notifiedInputs = nextNotifiedInputs;
 
-  ctx.ui.setStatus("tmux-task", formatStatusLine(snapshot));
+  updateTmuxTasksOverview(ctx, snapshot);
 
   if (runtime.activeSessionId !== session.sessionId) return;
 
@@ -338,24 +366,47 @@ async function activateSession(pi: ExtensionAPI, ctx: ExtensionContext): Promise
     session.bellHookInstalled = await tmuxInstallBellHook(session.sessionName);
   }
   runtime.activePoller = startTmuxPoller(session.sessionName, 2000, (snapshot) => handleActiveSnapshot(pi, ctx, session, snapshot));
-  ctx.ui.setStatus("tmux-task", formatStatusLine(runtime.activePoller.getLatest() ?? session.previousSnapshot));
+  updateTmuxTasksOverview(ctx, runtime.activePoller.getLatest() ?? session.previousSnapshot);
   return session;
 }
 
 function registerStartedTask(ctx: ExtensionContext, startedTask: TmuxTaskSnapshot): void {
   const session = ensureManagedSession(ctx);
   session.previousSnapshot = session.previousSnapshot
-    ? { ...session.previousSnapshot, tasks: [...session.previousSnapshot.tasks.filter((task) => task.windowId !== startedTask.windowId), startedTask] }
+    ? { ...session.previousSnapshot, exists: true, tasks: [...session.previousSnapshot.tasks.filter((task) => task.windowId !== startedTask.windowId), startedTask] }
     : { sessionName: session.sessionName, exists: true, tasks: [startedTask], capturedAt: Date.now() };
 }
 
 export default function (pi: ExtensionAPI) {
+  let footerContext: ExtensionContext | undefined;
+  let unsubscribeFooterClick: (() => void) | undefined;
+  const connectFooterClick = (ctx: ExtensionContext) => {
+    footerContext = ctx;
+    if (unsubscribeFooterClick) return;
+    unsubscribeFooterClick = pi.events.on("tmux-task:open-panel", () => {
+      const current = footerContext;
+      if (!current || runtime.activeSessionId !== sessionIdFor(current)) return;
+      void openCurrentTmuxTasksPanel(current).catch((error) => {
+        if (footerContext !== current) return;
+        current.ui.notify(`Failed to open tmux tasks panel: ${String(error)}`, "error");
+      });
+    });
+  };
+
+  pi.registerShortcut("alt+t", {
+    description: "Open tmux tasks panel",
+    handler: (ctx) => openCurrentTmuxTasksPanel(ctx),
+  });
   pi.on("session_start", async (_event, ctx) => {
+    connectFooterClick(ctx);
     const session = await activateSession(pi, ctx);
     await cleanAndNotifyStaleProjectSessions(ctx, session.sessionName);
   });
 
   pi.on("session_shutdown", async (event, ctx) => {
+    unsubscribeFooterClick?.();
+    unsubscribeFooterClick = undefined;
+    footerContext = undefined;
     const sessionId = sessionIdFor(ctx);
     const sessionName = sessionNameFor(ctx);
 
@@ -368,6 +419,7 @@ export default function (pi: ExtensionAPI) {
     }
     if (runtime.activeSessionId === sessionId) runtime.activeSessionId = undefined;
     ctx.ui.setStatus("tmux-task", undefined);
+    ctx.ui.setWidget("tmux-task", undefined);
   });
 
   pi.on("tool_call", async (event, ctx) => {
@@ -390,7 +442,9 @@ export default function (pi: ExtensionAPI) {
     const startedTask = taskFromStartedOutput(output, session.sessionName);
     if (!startedTask) return;
 
+    connectFooterClick(ctx);
     registerStartedTask(ctx, startedTask);
+    updateTmuxTasksOverview(ctx, session.previousSnapshot);
   });
 
   pi.registerCommand("tmux-tasks", {
@@ -476,7 +530,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      if (!ctx.hasUI) {
+      if (ctx.mode !== "tui") {
         const summary = formatSnapshotSummary(sessionName, snapshot);
         pi.sendMessage({
           customType: "tmux-task-summary",
@@ -487,14 +541,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      await showTmuxTasksPanel({
-        ctx,
-        sessionName,
-        initialSnapshot: snapshot,
-        refresh,
-        onManualKill: (task) => session.manuallyKilledWindowIds.add(task.windowId),
-        onManualKillFailed: (task) => session.manuallyKilledWindowIds.delete(task.windowId),
-      });
+      await openCurrentTmuxTasksPanel(ctx, snapshot);
     },
   });
 }

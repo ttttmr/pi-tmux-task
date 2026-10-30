@@ -210,7 +210,7 @@ After every snapshot, `handleActiveSnapshot(...)`:
 2. diffs the previous and current snapshots; for a task that rings and exits in the same snapshot, semantic event order is `notify` then `exited`;
 3. stores the current snapshot as the next baseline;
 4. dedupes repeated input events;
-5. updates the status line;
+5. updates the original footer task status with total, running, and failed counts; a compatible footer emits `tmux-task:open-panel` through `pi.events` on click, and `Alt+T` also opens the task panel;
 6. chooses UI notice or conversation message.
 
 Delivery matrix:
@@ -253,7 +253,7 @@ The `followUp` delivery mode means task events do not interrupt an active agent 
 
 ## Important edge cases
 
-- A missing session hides the status line and produces no events by itself.
+- A missing session hides the task overview and produces no events by itself.
 - First observation is baseline, not a replay of old state.
 - A task without known live pane state cannot produce `input`.
 - Dead task output that looks like a prompt cannot produce `input`.
