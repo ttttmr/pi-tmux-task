@@ -1,3 +1,4 @@
+import { DEFAULT_NOTIFICATION_DELIVERY, type NotificationDelivery } from "../config.ts";
 import type { TmuxSnapshot, TmuxTaskSnapshot } from "../types.ts";
 
 export type TmuxTaskEvent =
@@ -247,9 +248,12 @@ export function shouldTriggerTurnForTmuxTaskEvents(events: TmuxTaskEvent[]): boo
   return visibleEvents.length > 0;
 }
 
-export function getTmuxTaskMessageOptions(events: TmuxTaskEvent[]): { triggerTurn: boolean; deliverAs: "followUp" } {
+export function getTmuxTaskMessageOptions(
+  events: TmuxTaskEvent[],
+  delivery: NotificationDelivery = DEFAULT_NOTIFICATION_DELIVERY,
+): { triggerTurn: boolean; deliverAs: NotificationDelivery } {
   return {
     triggerTurn: shouldTriggerTurnForTmuxTaskEvents(events),
-    deliverAs: "followUp",
+    deliverAs: delivery,
   };
 }

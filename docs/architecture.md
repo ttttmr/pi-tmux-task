@@ -262,7 +262,7 @@ Important details:
 
 - `formatTmuxTaskEvents(events)`
 - `formatTmuxTaskNotice(events)`
-- `getTmuxTaskMessageOptions(events)`
+- `getTmuxTaskMessageOptions(events, delivery)`
 - `handleActiveSnapshot(...)`
 
 **Delivery rules:**
@@ -270,9 +270,11 @@ Important details:
 | Event set | Delivery | Agent turn? |
 |---|---|---|
 | only `started` | `ctx.ui.notify(...)` | No |
-| `exited` / `notify` / `input` / `disappeared` | `pi.sendMessage(...)` with `[tmux-task notification]` | Yes, as `followUp` |
+| `exited` / `notify` / `input` / `disappeared` | `pi.sendMessage(...)` with `[tmux-task notification]` | Yes, configured `followUp` (default) or `steer` |
 | historical active sessions at startup | `ctx.ui.notify(...)` | No |
 | `/tmux-tasks` UI actions | `ctx.ui.notify(...)` or panel UI | No |
+
+Delivery is loaded from the project-only `.pi/tmux-task.json` on session start or `/reload`; see [notification timing](../README.md#notification-timing). Both modes wake an idle agent. Configuration changes do not retract queued messages.
 
 Conversation task messages include details metadata marking them as extension-generated task state rather than user input.
 

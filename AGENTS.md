@@ -65,6 +65,7 @@ This repository is a **Pi extension package** for Pi-session-scoped background t
 - `skills/tmux-task-manager/tmux-task-run.sh`: helper to start or rerun a named task slot with injected `PI_TMUX_SESSION` and `remain-on-exit`.
 - `src/index.ts`: extension entry point; wires session lifecycle, env injection, polling, notifications, and `/tmux-tasks` command.
 - `src/context.ts`: session-name computation logic shared by runtime/tests.
+- `src/config.ts`: project-only notification delivery configuration, validated and loaded on session start or `/reload`; invalid files warn and use `followUp`.
 - `src/tmux/commands.ts`: tmux subprocess wrappers.
 - `src/tmux/parse.ts`: parsing of `list-windows` / `list-panes` output.
 - `src/tmux/snapshot.ts`: collects the current tmux session snapshot.
@@ -87,7 +88,7 @@ Important conventions encoded by the skill:
 - Give tasks concise but meaningful stable names like `frontend-dev`, `api-server`, `worker-sync`, `scan-deps`, `tests-watch`.
 - When rerunning the same task, prefer reusing the existing task slot so the `window_id` stays stable when possible; replace the slot only when reuse is not practical.
 - The same skill also covers delayed and recurring background work, such as "continue this in 10 minutes" or "check this every 10 minutes and notify me".
-- Waiting is part of the task, not the agent turn: foreground `sleep` polling is forbidden, the only exception is a single ~5s startup grace check in the launch call or the call immediately after it. Completion is observed through `[tmux-task notification]` — a follow-up that starts a new turn after the current turn ends (or immediately when the session is idle) — or through a wait/follow-up loop placed inside the managed task.
+- Waiting is part of the task, not the agent turn: foreground `sleep` polling is forbidden, the only exception is a single ~5s startup grace check in the launch call or the call immediately after it. Completion is observed through `[tmux-task notification]` — a notification delivered with configured `followUp` (default, when the current chain would stop) or `steer` (after the current tool batch, before the next model call); both wake an idle session — or through a wait/follow-up loop placed inside the managed task.
 - Use tmux as the underlying runtime and inspection mechanism when needed.
 - Intended trigger boundary: long-running background task handling and waiting on long-running work should trigger it; generic tmux help, generic shell `sleep` questions, and short foreground commands should not.
 
@@ -175,7 +176,7 @@ Notification behavior:
   - `tmux task @12 (frontend-dev) is waiting for input: Proceed? [y/N]`
   - `tmux task @12 (frontend-dev) disappeared from session`
 - Suppress `started` messages from the conversation; task launch success is expected to be visible in the initiating tool output.
-- Events sent to the conversation are posted with `pi.sendMessage(...)` and auto-trigger an agent turn (as a follow-up while a turn is running; immediately when idle).
+- Events sent to the conversation are posted with `pi.sendMessage(...)` and auto-trigger an agent turn (using project `.pi/tmux-task.json` `notificationDelivery`: `followUp` by default or `steer`; both wake an idle session).
 - `started` events are surfaced only as UI notices.
 - Input-waiting notifications are deduplicated to avoid repeated spam.
 - Note: `disappeared` means the previously observed tmux window is gone from the session; it is a window-level disappearance, not necessarily a normal process exit.
