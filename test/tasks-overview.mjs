@@ -169,7 +169,7 @@ try {
         return ctx[key];
       } });
     }
-    const oldSession = { ...session, panelOpen: false };
+    const oldSession = { ...session, previousSnapshot: { ...snapshot, tasks: [] }, panelOpen: false };
     runtime.sessions.set(sessionId, oldSession);
     runtime.activeSessionId = sessionId;
     let resolveRefresh;
@@ -178,6 +178,7 @@ try {
     runtime.activePoller = { refreshNow: () => pendingRefresh, stop() {} };
     const startedEvent = { toolName: 'bash', isError: false, content: [{ type: 'text', text: `session=${sessionName}\nwindow_id=@9\ntask=new-task\n` }] };
     await reloadHandlers.get('tool_result')(startedEvent, reloadContext);
+    const pendingResult = reloadHandlers.get('tool_result')(startedEvent, reloadContext);
     reloadActions.get('tmux-task:open-panel')();
     assert.equal(oldSession.panelOpen, true, 'the click must be awaiting its refresh');
     await reloadHandlers.get('session_shutdown')({ reason: 'reload' }, reloadContext);
@@ -185,13 +186,14 @@ try {
 
     // A new extension instance resumes the same ID with a fresh session object.
     extension(api);
-    const replacementSession = { ...session, panelOpen: false };
+    const replacementSession = { ...session, previousSnapshot: { ...snapshot, tasks: [] }, panelOpen: false };
     runtime.sessions.set(sessionId, replacementSession);
     runtime.activeSessionId = sessionId;
     runtime.activePoller = { refreshNow: async () => snapshot, stop() {} };
     await reloadHandlers.get('tool_result')(startedEvent, ctx);
     if (outcome === 'resolve') resolveRefresh(snapshot);
     else rejectRefresh(new Error('refresh failed after reload'));
+    await pendingResult;
     await settleClick();
     assert.equal(oldSession.panelOpen, false, 'a stale open must release its guard');
     assert.equal(panelCount, 2, 'a stale click must not open a replacement panel');
@@ -201,7 +203,7 @@ try {
 
   // Errors from a current click must still reach the user.
   const notifications = [];
-  runtime.sessions.set(sessionId, { ...session, panelOpen: false });
+  runtime.sessions.set(sessionId, { ...session, previousSnapshot: { ...snapshot, tasks: [] }, panelOpen: false });
   runtime.activeSessionId = sessionId;
   runtime.activePoller = { refreshNow: async () => { throw new Error('current refresh failed'); }, stop() {} };
   const currentContext = { ...ctx, ui: { ...ctx.ui, notify: (...args) => notifications.push(args) } };
@@ -210,7 +212,7 @@ try {
   await settleClick();
   assert.deepEqual(notifications, [['Failed to open tmux tasks panel: Error: current refresh failed', 'error']]);
   await handlers.get('session_shutdown')({ reason: 'reload' }, currentContext);
-  assert.deepEqual(staleContextReads, [], 'pending clicks must never read an invalidated extension context');
+  assert.deepEqual(staleContextReads, [], 'pending clicks and launch refreshes must never read an invalidated extension context');
   assert.deepEqual(unhandledErrors, [], 'pending click errors must not become unhandled rejections');
 } finally {
   process.off('unhandledRejection', onUnhandledRejection);

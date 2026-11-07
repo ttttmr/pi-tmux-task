@@ -86,6 +86,7 @@ function taskDetails(task: TmuxTaskSnapshot) {
     windowId: task.windowId,
     windowName: task.windowName,
     paneId: task.paneId,
+    panePid: task.panePid,
     paneStateKnown: task.paneStateKnown,
     currentCommand: task.currentCommand,
     taskCwd: task.taskCwd,
@@ -370,11 +371,14 @@ async function activateSession(pi: ExtensionAPI, ctx: ExtensionContext): Promise
   return session;
 }
 
-function registerStartedTask(ctx: ExtensionContext, startedTask: TmuxTaskSnapshot): void {
+function registerStartedTask(ctx: ExtensionContext, startedTask: TmuxTaskSnapshot): boolean {
   const session = ensureManagedSession(ctx);
+  // Helper output is a launch hint, not current pane state. It may arrive after exit.
+  if (session.previousSnapshot?.tasks.some((task) => task.windowId === startedTask.windowId)) return false;
   session.previousSnapshot = session.previousSnapshot
-    ? { ...session.previousSnapshot, exists: true, tasks: [...session.previousSnapshot.tasks.filter((task) => task.windowId !== startedTask.windowId), startedTask] }
+    ? { ...session.previousSnapshot, exists: true, tasks: [...session.previousSnapshot.tasks, startedTask] }
     : { sessionName: session.sessionName, exists: true, tasks: [startedTask], capturedAt: Date.now() };
+  return true;
 }
 
 export default function (pi: ExtensionAPI) {
@@ -443,7 +447,17 @@ export default function (pi: ExtensionAPI) {
     if (!startedTask) return;
 
     connectFooterClick(ctx);
-    registerStartedTask(ctx, startedTask);
+    if (!registerStartedTask(ctx, startedTask) && runtime.activeSessionId === session.sessionId) {
+      // Discover genuine reruns from tmux without rolling back the diff baseline.
+      const isCurrent = () => footerContext === ctx && runtime.activeSessionId === session.sessionId && runtime.sessions.get(session.sessionId) === session;
+      try {
+        await runtime.activePoller?.refreshNow(true);
+      } catch (error) {
+        if (!isCurrent()) return;
+        throw error;
+      }
+      if (!isCurrent()) return;
+    }
     updateTmuxTasksOverview(ctx, session.previousSnapshot);
   });
 

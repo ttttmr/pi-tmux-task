@@ -3,7 +3,7 @@ import { collectTmuxSnapshot } from "./snapshot.ts";
 
 export type TmuxPollerHandle = {
   getLatest(): TmuxSnapshot | undefined;
-  refreshNow(): Promise<TmuxSnapshot>;
+  refreshNow(afterInFlight?: boolean): Promise<TmuxSnapshot>;
   stop(): void;
 };
 
@@ -25,8 +25,13 @@ export function startTmuxPoller(
     return snapshot;
   };
 
-  const refreshSerial = async () => {
-    if (inFlight) return inFlight;
+  const refreshSerial = async (afterInFlight = false): Promise<TmuxSnapshot> => {
+    if (inFlight) {
+      if (!afterInFlight) return inFlight;
+      // A launch result needs a read begun after it arrived, not a pre-launch read.
+      await inFlight;
+      return refreshSerial();
+    }
 
     inFlight = runRefresh().finally(() => {
       inFlight = undefined;
@@ -48,8 +53,8 @@ export function startTmuxPoller(
     getLatest() {
       return latest;
     },
-    refreshNow() {
-      return refreshSerial();
+    refreshNow(afterInFlight = false) {
+      return refreshSerial(afterInFlight);
     },
     stop() {
       stopped = true;

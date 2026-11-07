@@ -41,6 +41,8 @@ const eventHeader = '[tmux-task notification]';
 
 assert.equal(parseListWindows(['web', '@1', '1', '2', '1', '3', 'npm run dev', '/tmp/project'].join(TMUX_FIELD_SEPARATOR))[0].windowId, '@1');
 assert.equal(parseListPanes(['@1', 'web', '%1', '1', '0', 'bash', 'npm run dev'].join(TMUX_FIELD_SEPARATOR))[0].paneId, '%1');
+assert.equal(parseListPanes(['@1', 'web', '%1', '1', '0', 'bash', 'npm run dev', '123'].join(TMUX_FIELD_SEPARATOR))[0].panePid, 123);
+assert.equal(parseListPanes(['@1', 'web', '%1', '1', '0', 'bash', 'npm run dev'].join(TMUX_FIELD_SEPARATOR))[0].panePid, undefined);
 assert.equal(parseListWindows('web_@1_1_2_1_3_npm run dev_/tmp/project')[0].windowId, '');
 
 // first snapshot is passive: existing running/dead/bell tasks are observable state, not fresh events
@@ -66,6 +68,27 @@ assert.equal(formatTmuxTaskNotice(events), 'tmux task @1 (web) exited with code 
 assert.equal(getTmuxTaskEventLevel(events), 'info');
 assert.equal(shouldTriggerTurnForTmuxTaskEvents(events), true);
 assert.deepEqual(getTmuxTaskMessageOptions(events), { triggerTurn: true, deliverAs: 'followUp' });
+
+// A respawn can complete between polls while retaining windowId and paneId.
+const oldRun = task({ panePid: 101, dead: true, exitCode: 0 });
+const shortRerun = task({ panePid: 102, dead: true, exitCode: 7, bell: true, bellCount: 1 });
+events = diffTmuxSnapshots(snapshot([oldRun]), snapshot([shortRerun]));
+assert.deepEqual(events.map((event) => event.type), ['notify', 'exited']);
+assert.match(formatTmuxTaskEvents(events), /sent a terminal notification, then exited with code 7/);
+assert.deepEqual(diffTmuxSnapshots(snapshot([shortRerun]), snapshot([shortRerun])), []);
+assert.deepEqual(diffTmuxSnapshots(undefined, snapshot([shortRerun])), [], 'run identity does not replay baseline exits');
+assert.deepEqual(diffTmuxSnapshots(snapshot([oldRun]), snapshot([task({ panePid: 102 })])).map((event) => event.type), ['started']);
+assert.deepEqual(diffTmuxSnapshots(snapshot([oldRun]), snapshot([task({ paneId: '%2', panePid: 101, dead: true })])).map((event) => event.type), ['exited'], 'replacing the primary pane is also a new run');
+
+// A new run must establish its own stable prompt and reset input deduplication.
+const oldPrompt = task({ panePid: 101, outputPreview: 'Proceed? [y/N]' });
+const newPrompt = task({ panePid: 102, outputPreview: 'Proceed? [y/N]' });
+events = diffTmuxSnapshots(snapshot([oldPrompt]), snapshot([newPrompt]));
+assert.deepEqual(events.map((event) => event.type), ['started']);
+const resetInputs = filterRepeatedInputEvents(events, snapshot([newPrompt]), new Map([['@1', 'Proceed? [y/N]']]));
+assert.equal(resetInputs.nextNotifiedInputs.size, 0);
+events = diffTmuxSnapshots(snapshot([newPrompt]), snapshot([newPrompt]));
+assert.deepEqual(filterRepeatedInputEvents(events, snapshot([newPrompt]), resetInputs.nextNotifiedInputs).events.map((event) => event.type), ['input']);
 
 // non-zero exit is still a plain exit event with the code included
 events = diffTmuxSnapshots(snapshot([task()]), snapshot([task({ dead: true, exitCode: 2 })]));

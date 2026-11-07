@@ -27,6 +27,14 @@ function getBellCount(task: TmuxTaskSnapshot): number {
   return task.bellCount ?? 0;
 }
 
+function isDifferentRun(previous: TmuxTaskSnapshot, current: TmuxTaskSnapshot): boolean {
+  // respawn-window can reuse both windowId and paneId, but starts a new process.
+  return Boolean(
+    (previous.paneId && current.paneId && previous.paneId !== current.paneId) ||
+    (previous.panePid != null && current.panePid != null && previous.panePid !== current.panePid),
+  );
+}
+
 export function extractInputPrompt(preview: string | undefined): string | undefined {
   if (!preview) return undefined;
 
@@ -79,11 +87,14 @@ export function diffTmuxSnapshots(previous: TmuxSnapshot | undefined, current: T
       continue;
     }
 
+    const differentRun = isDifferentRun(previousTask, currentTask);
+    if (differentRun && !currentTask.dead) events.push({ type: "started", task: currentTask });
+
     if (getBellCount(currentTask) > getBellCount(previousTask) || (!previousTask.bell && currentTask.bell)) {
       events.push({ type: "notify", task: currentTask });
     }
 
-    if (!previousTask.dead && currentTask.dead) {
+    if ((!previousTask.dead || differentRun) && currentTask.dead) {
       events.push(makeExitedEvent(currentTask));
     }
 
@@ -91,6 +102,7 @@ export function diffTmuxSnapshots(previous: TmuxSnapshot | undefined, current: T
     const currentPrompt = extractInputPrompt(currentTask.outputPreview);
     const previewUnchanged = previousTask.outputPreview === currentTask.outputPreview;
     if (
+      !differentRun &&
       isInputEligible(previousTask) &&
       isInputEligible(currentTask) &&
       previewUnchanged &&
@@ -117,12 +129,13 @@ export function filterRepeatedInputEvents(
   previousNotifiedInputs: Map<string, string>,
 ): { events: TmuxTaskEvent[]; nextNotifiedInputs: Map<string, string> } {
   const nextNotifiedInputs = new Map<string, string>();
+  const startedWindowIds = new Set(events.filter((event) => event.type === "started").map((event) => event.task.windowId));
 
   for (const task of current.tasks) {
     if (!isInputEligible(task)) continue;
     const prompt = extractInputPrompt(task.outputPreview);
     if (!prompt) continue;
-    if (previousNotifiedInputs.get(task.windowId) === prompt) {
+    if (!startedWindowIds.has(task.windowId) && previousNotifiedInputs.get(task.windowId) === prompt) {
       nextNotifiedInputs.set(task.windowId, prompt);
     }
   }

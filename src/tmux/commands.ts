@@ -91,6 +91,7 @@ export async function tmuxListPanes(sessionName: string): Promise<TmuxPaneInfo[]
       "#{pane_dead_status}",
       "#{pane_current_command}",
       "#{pane_title}",
+      "#{pane_pid}",
     ].join(TMUX_FIELD_SEPARATOR),
   ]);
   if (result.code !== 0) return [];

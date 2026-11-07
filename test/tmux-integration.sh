@@ -37,6 +37,15 @@ restore_tmux_global_env() {
 
 require_tmux
 
+# Every tmux client (including helpers and Node wrappers) uses this test's server.
+test_root="$(mktemp -d "$ROOT_DIR/.tmux-integration-XXXXXX")"
+tmux_binary="$(command -v tmux)"
+mkdir "$test_root/bin"
+printf '#!/usr/bin/env bash\nexec %q -f /dev/null -S %q "$@"\n' "$tmux_binary" "$test_root/socket" >"$test_root/bin/tmux"
+chmod +x "$test_root/bin/tmux"
+export PATH="$test_root/bin:$PATH"
+unset TMUX TMUX_PANE
+
 old_global_pi_session_id="$(save_tmux_global_env PI_SESSION_ID)"
 old_global_pi_tmux_session="$(save_tmux_global_env PI_TMUX_SESSION)"
 
@@ -47,6 +56,8 @@ cleanup_all() {
   cleanup_session "$session_name"
   restore_tmux_global_env PI_SESSION_ID "$old_global_pi_session_id"
   restore_tmux_global_env PI_TMUX_SESSION "$old_global_pi_tmux_session"
+  tmux kill-server >/dev/null 2>&1 || true
+  rm -rf "$test_root"
 }
 trap cleanup_all EXIT
 
@@ -75,15 +86,15 @@ preview="$(tmux capture-pane -p -t "$window_id" -S -20)"
 [[ "$preview" == *"hello from integration test"* ]] || fail "capture-pane should show command output"
 pass "capture-pane works"
 
-if env -u PI_TMUX_SESSION "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" helper-run -- 'printf "should fail without session\\n"' >/tmp/pi-tmux-task-run-no-session.out 2>/tmp/pi-tmux-task-run-no-session.err; then
+if env -u PI_TMUX_SESSION "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" helper-run -- 'printf "should fail without session\\n"' >"$test_root/no-session.out" 2>"$test_root/no-session.err"; then
   fail "run helper should require PI_TMUX_SESSION"
 fi
-if ! grep -q 'PI_TMUX_SESSION is required' /tmp/pi-tmux-task-run-no-session.err; then
+if ! grep -q 'PI_TMUX_SESSION is required' "$test_root/no-session.err"; then
   fail "run helper should explain missing PI_TMUX_SESSION"
 fi
 pass "tmux-task-run helper requires explicit session env"
 
-helper_cwd="/tmp/pi-tmux-task-helper-cwd"
+helper_cwd="$test_root/helper-cwd"
 mkdir -p "$helper_cwd"
 tmux set-environment -g PI_SESSION_ID stale-pi-session >/dev/null
 tmux set-environment -g PI_TMUX_SESSION stale-tmux-session >/dev/null
@@ -96,7 +107,7 @@ helper_run_window_id="$(tmux list-windows -t "$session_name" -F '#{window_name}|
 [[ -n "$helper_run_window_id" ]] || fail "run helper should create task window"
 helper_run_preview="$(tmux capture-pane -p -t "$helper_run_window_id" -S -20)"
 helper_run_preview_flat="$(printf '%s' "$helper_run_preview" | tr -d '\n')"
-[[ "$helper_run_preview" == *"from helper run cwd=$helper_cwd"* ]] || fail "run helper should execute command in configured cwd"
+[[ "$helper_run_preview_flat" == *"from helper run cwd=$helper_cwd"* ]] || fail "run helper should execute command in configured cwd"
 [[ "$helper_run_preview_flat" == *"task env session=$session_name pi=unset"* ]] || fail "run helper should pass only the effective PI_TMUX_SESSION into task panes"
 window_task_command="$(tmux list-windows -t "$session_name" -F '#{window_name}|#{@pi_task_command}' | awk -F '|' '$1=="helper-run"{print $2; exit}')"
 [[ "$window_task_command" == *'printf "from helper run cwd=%s'* ]] || fail "run helper should store display command in tmux window metadata"
@@ -124,10 +135,10 @@ EOF
 [[ "$wrapper_probe" == "$helper_run_window_id|$helper_cwd|pane|dead|0" ]] || fail "tmux command wrappers should parse all session panes, including non-active dead panes, under C locale"
 pass "tmux command wrappers parse session-wide panes under C locale"
 
-if PI_TMUX_SESSION="$session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" 'bad name' -- 'printf bad' >/tmp/pi-tmux-task-run-bad-name.out 2>/tmp/pi-tmux-task-run-bad-name.err; then
+if PI_TMUX_SESSION="$session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" 'bad name' -- 'printf bad' >"$test_root/bad-name.out" 2>"$test_root/bad-name.err"; then
   fail "run helper should reject invalid task names"
 fi
-if ! grep -q 'invalid task name' /tmp/pi-tmux-task-run-bad-name.err; then
+if ! grep -q 'invalid task name' "$test_root/bad-name.err"; then
   fail "run helper should explain invalid task names"
 fi
 pass "tmux-task-run helper validates task names"
