@@ -40,13 +40,15 @@ const env = {
 // No inherited tmux client routing or proxy is needed for the local endpoint.
 for (const name of ['TMUX', 'TMUX_PANE', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY']) delete env[name];
 
-async function run(delivery) {
-  const cwd = join(root, delivery ?? 'default');
+async function run(delivery, globalDelivery) {
+  const label = `project=${delivery ?? 'missing'},global=${globalDelivery ?? 'missing'}`;
+  const cwd = join(root, label);
   const agentDir = join(cwd, 'agent');
   await mkdir(join(cwd, '.pi'), { recursive: true });
   await mkdir(agentDir);
   if (delivery) await writeFile(join(cwd, '.pi/tmux-task.json'), JSON.stringify({ notificationDelivery: delivery }));
-  const expected = delivery ?? 'followUp';
+  if (globalDelivery) await writeFile(join(agentDir, 'tmux-task.json'), JSON.stringify({ notificationDelivery: globalDelivery }));
+  const expected = delivery ?? globalDelivery ?? 'followUp';
   const backgroundGate = join(cwd, 'background.done');
   const foregroundGate = join(cwd, 'foreground.done');
   const idleGate = join(cwd, 'idle.done');
@@ -183,7 +185,7 @@ async function run(delivery) {
     assert.equal(calls, expectedCalls + 1);
     assert.ok(JSON.stringify(requests.at(-1).messages).includes('(idle-task) exited with code 0'));
     assert.ok(!records.some((r) => r.type === 'extension_error'), 'no extension errors');
-    console.log(`[PASS] ${delivery ?? 'missing config'}: busy notification first appears in model request #${firstNotificationCall}; foreground completes; follow-up chain settles once; idle exit wakes Pi (request #${calls}).`);
+    console.log(`[PASS] ${label}: busy notification first appears in model request #${firstNotificationCall}; foreground completes; follow-up chain settles once; idle exit wakes Pi (request #${calls}).`);
   } catch (error) {
     console.error('Pi stderr:', stderr);
     console.error('Recent records:', JSON.stringify(records.filter((r) => r.type !== 'extension_ui_request' || !['setStatus', 'setWidget'].includes(r.method)).slice(-12), null, 2));
@@ -199,7 +201,10 @@ async function run(delivery) {
 }
 
 try {
-  for (const delivery of ['followUp', 'steer', undefined]) await run(delivery);
+  for (const [delivery, globalDelivery] of [
+    ['followUp', undefined], ['steer', undefined], [undefined, undefined],
+    [undefined, 'steer'], ['followUp', 'steer'], ['steer', 'followUp'],
+  ]) await run(delivery, globalDelivery);
   console.log('Real Pi RPC/tmux delivery integration passed. Model responses came from a local fixture, not an online model.');
 } finally {
   try { execFileSync(tmux, ['-S', socket, 'kill-server'], { stdio: 'ignore' }); } catch {}

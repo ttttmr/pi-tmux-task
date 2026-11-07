@@ -274,7 +274,7 @@ Important details:
 | historical active sessions at startup | `ctx.ui.notify(...)` | No |
 | `/tmux-tasks` UI actions | `ctx.ui.notify(...)` or panel UI | No |
 
-Delivery is loaded from the project-only `.pi/tmux-task.json` on session start or `/reload`; see [notification timing](../README.md#notification-timing). Both modes wake an idle agent. Configuration changes do not retract queued messages.
+Delivery is loaded from project `.pi/tmux-task.json` over global `<getAgentDir()>/tmux-task.json` (normally `~/.pi/agent/tmux-task.json`, respecting `PI_CODING_AGENT_DIR`) on session start or `/reload`; missing or empty layers inherit and invalid layers warn and are ignored; see [notification timing](../README.md#notification-timing). Both modes wake an idle agent. Configuration changes do not retract queued messages.
 
 Conversation task messages include details metadata marking them as extension-generated task state rather than user input.
 

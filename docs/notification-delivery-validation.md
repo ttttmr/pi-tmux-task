@@ -33,3 +33,7 @@ This is stronger than the unit test that calls `AgentSession.sendCustomMessage` 
 实测三组全部通过：`steer` 在第 3 次请求就携带退出通知；`followUp` 和缺省配置在第 5 次请求携带通知。两者都等待前台工具正常完成，都可在空闲时由任务退出自动唤醒。`followUp` 的处理发生在 `agent_settled` 之前，不要求先进入 idle。
 
 尚未验证在线模型效果、TUI 展示、token 流期间的具体时序或交互式 `/reload`。本次未修改全局 Pi、已安装扩展或用户配置。
+
+## Global and project configuration regression
+
+Validated on 2026-11-07 with Node.js 24.11.1 and Pi 1.5.0: `npm run check` and `npm run check:pi-integration` passed. The real Pi/tmux fixture now covers six cases: project `followUp`, project `steer`, neither file, global `steer`, project `followUp` over global `steer`, and project `steer` over global `followUp`. Effective `steer` appears in request 3; effective `followUp` appears in request 5. Every case checks foreground completion and idle wake-up. Unit/lifecycle tests additionally cover empty layers, invalid layers, warnings from both files, `PI_CODING_AGENT_DIR`, and reloading.

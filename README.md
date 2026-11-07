@@ -81,7 +81,7 @@ Kill all background tasks for the current conversation:
 
 ## Notification timing
 
-Create `.pi/tmux-task.json` in the directory where you start Pi (`ctx.cwd`):
+Create `~/.pi/agent/tmux-task.json` for global defaults, or `.pi/tmux-task.json` in the directory where you start Pi (`ctx.cwd`) for a project override:
 
 ```json
 {
@@ -94,9 +94,9 @@ Create `.pi/tmux-task.json` in the directory where you start Pi (`ctx.cwd`):
 | `followUp` (default) | Consumed when the current agent chain would stop, with no more tool calls; Pi need not become idle first. | Starts an agent turn. |
 | `steer` | Delivered at the safe boundary after the current assistant turn's tool batch, before the next model call. Does not interrupt token streaming or a running command. | Starts an agent turn. |
 
-The extension reads this project-only file at session start, including `/reload`. Edit the file and run `/reload` to apply it to future notifications. All Pi sessions started in that directory use the file on their next load. There is no global config, parent-directory search, or merge precedence. Missing file or `{}` uses `followUp`; to restore the default, remove the file or set `"notificationDelivery": "followUp"`.
+Precedence is project > global > built-in `followUp`. The global file lives in Pi's agent directory (normally `~/.pi/agent`; respects `PI_CODING_AGENT_DIR`). A missing file or `{}` inherits the next layer; an explicit project `followUp` overrides global `steer`. There is no parent-directory search. Remove a project override to inherit the global setting; remove both settings to restore the built-in default.
 
-Invalid JSON, unreadable files, unknown keys, or values other than these two exact strings produce a warning with the file path and use `followUp`. This is an extension-owned file, not a key in Pi's `settings.json`. No config is written automatically. `nextTurn` is not supported here: Pi's passive mode would wait for the next prompt and would not wake the agent.
+Both files are read at session start, including `/reload`. Edit them and run `/reload` to apply changes to future notifications. Invalid JSON, unreadable files, unknown keys, or values other than these two exact strings produce a warning naming each invalid file. An invalid layer is ignored; valid layers still apply, with `followUp` used when neither supplies a value. These are extension-owned files, not keys in Pi's `settings.json`. No config is written automatically. `nextTurn` is not supported here: Pi's passive mode would wait for the next prompt and would not wake the agent.
 
 Polling stays at 2 seconds. Event filtering, grouping, and input deduplication are unchanged. Changing timing does not acknowledge, retract, or cancel queued/consumed events; inspecting logs or removing windows does not clear old notifications.
 

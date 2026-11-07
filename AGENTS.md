@@ -65,7 +65,7 @@ This repository is a **Pi extension package** for Pi-session-scoped background t
 - `skills/tmux-task-manager/tmux-task-run.sh`: helper to start or rerun a named task slot with injected `PI_TMUX_SESSION` and `remain-on-exit`.
 - `src/index.ts`: extension entry point; wires session lifecycle, env injection, polling, notifications, and `/tmux-tasks` command.
 - `src/context.ts`: session-name computation logic shared by runtime/tests.
-- `src/config.ts`: project-only notification delivery configuration, validated and loaded on session start or `/reload`; invalid files warn and use `followUp`.
+- `src/config.ts`: global and project notification delivery configuration, with project settings overriding global defaults. Loaded on session start or `/reload`; invalid layers warn and are ignored, with `followUp` as the built-in default.
 - `src/tmux/commands.ts`: tmux subprocess wrappers.
 - `src/tmux/parse.ts`: parsing of `list-windows` / `list-panes` output.
 - `src/tmux/snapshot.ts`: collects the current tmux session snapshot.
@@ -176,7 +176,7 @@ Notification behavior:
   - `tmux task @12 (frontend-dev) is waiting for input: Proceed? [y/N]`
   - `tmux task @12 (frontend-dev) disappeared from session`
 - Suppress `started` messages from the conversation; task launch success is expected to be visible in the initiating tool output.
-- Events sent to the conversation are posted with `pi.sendMessage(...)` and auto-trigger an agent turn (using project `.pi/tmux-task.json` `notificationDelivery`: `followUp` by default or `steer`; both wake an idle session).
+- Events sent to the conversation are posted with `pi.sendMessage(...)` and auto-trigger an agent turn (using `notificationDelivery` from project `.pi/tmux-task.json` over global `<getAgentDir()>/tmux-task.json`: `followUp` by default or `steer`; both wake an idle session).
 - `started` events are surfaced only as UI notices.
 - Input-waiting notifications are deduplicated to avoid repeated spam.
 - Note: `disappeared` means the previously observed tmux window is gone from the session; it is a window-level disappearance, not necessarily a normal process exit.

@@ -8,6 +8,9 @@ import { AgentSession } from '@earendil-works/pi-coding-agent';
 
 const root = await mkdtemp(join(process.cwd(), '.delivery-test-'));
 const file = join(root, '.pi', 'tmux-task.json');
+const agentDir = join(root, 'agent');
+const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+process.env.PI_CODING_AGENT_DIR = agentDir;
 const task = { windowId: '@1', windowName: 'test', paneId: '%1', paneStateKnown: true, dead: false, bell: false };
 const exit = { type: 'exited', task: { ...task, dead: true, exitCode: 1 } };
 try {
@@ -29,6 +32,41 @@ try {
   await mkdir(file);
   assert.match((await loadDeliveryConfig(root)).warning, /Cannot read valid JSON/);
   await rm(file, { recursive: true });
+
+  // Global defaults, project overrides, empty layers, and invalid-layer fallback.
+  await mkdir(agentDir);
+  const globalFile = join(agentDir, 'tmux-task.json');
+  await writeFile(globalFile, JSON.stringify({ notificationDelivery: 'steer' }));
+  assert.deepEqual(await loadDeliveryConfig(root), { notificationDelivery: 'steer' });
+  await writeFile(file, '{}');
+  assert.deepEqual(await loadDeliveryConfig(root), { notificationDelivery: 'steer' });
+  await writeFile(file, JSON.stringify({ notificationDelivery: 'followUp' }));
+  assert.deepEqual(await loadDeliveryConfig(root), { notificationDelivery: 'followUp' });
+  for (const content of ['{', '{"notificationDelivery":"bad"}', '{"typo":true}']) {
+    await writeFile(file, content);
+    const result = await loadDeliveryConfig(root);
+    assert.equal(result.notificationDelivery, 'steer');
+    assert.ok(result.warning.includes(file));
+    assert.match(result.warning, /Using steer/);
+  }
+  await rm(file);
+  await mkdir(file);
+  assert.equal((await loadDeliveryConfig(root)).notificationDelivery, 'steer');
+  assert.match((await loadDeliveryConfig(root)).warning, /Cannot read valid JSON/);
+  await rm(file, { recursive: true });
+  await writeFile(globalFile, '{');
+  await writeFile(file, JSON.stringify({ notificationDelivery: 'steer' }));
+  let result = await loadDeliveryConfig(root);
+  assert.equal(result.notificationDelivery, 'steer');
+  assert.ok(result.warning.includes(globalFile));
+  await writeFile(file, '{');
+  result = await loadDeliveryConfig(root);
+  assert.equal(result.notificationDelivery, 'followUp');
+  assert.ok(result.warning.includes(globalFile) && result.warning.includes(file));
+  await writeFile(globalFile, '{}');
+  await rm(file);
+  assert.deepEqual(await loadDeliveryConfig(root), { notificationDelivery: 'followUp' });
+  await rm(globalFile);
 
   // Capture the real extension's poll callback. No tmux commands or model calls.
   let onSnapshot;
@@ -68,8 +106,13 @@ try {
     ui: { notify: (...args) => notices.push(args), setWidget() {}, setStatus() {} },
   };
   const snapshot = (tasks) => ({ sessionName: 'test', exists: true, tasks, capturedAt: 0 });
-  for (const delivery of ['followUp', 'steer', 'invalid', undefined]) {
-    const expected = delivery === 'steer' ? 'steer' : 'followUp';
+  for (const [delivery, globalDelivery, expected] of [
+    ['followUp', 'steer', 'followUp'], ['steer', 'followUp', 'steer'],
+    ['invalid', 'steer', 'steer'], [undefined, 'steer', 'steer'],
+    [undefined, undefined, 'followUp'],
+  ]) {
+    if (globalDelivery) await writeFile(globalFile, JSON.stringify({ notificationDelivery: globalDelivery }));
+    else await rm(globalFile);
     if (delivery === undefined) await rm(file);
     else await writeFile(file, JSON.stringify({ notificationDelivery: delivery }));
     sent.length = 0;
@@ -111,7 +154,7 @@ try {
     assert.deepEqual(sent[0][1], { deliverAs: expected, triggerTurn: true });
     await handlers.get('session_shutdown')({ reason: 'reload' }, ctx);
   }
-  assert.equal(stopCount, 8);
+  assert.equal(stopCount, 10);
 
   for (const delivery of ['followUp', 'steer']) {
     assert.deepEqual(parseDeliveryConfig({ notificationDelivery: delivery }), { notificationDelivery: delivery });
@@ -135,6 +178,8 @@ try {
   }
   assert.deepEqual(getTmuxTaskMessageOptions([exit]), { deliverAs: 'followUp', triggerTurn: true });
 } finally {
+  if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+  else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
   mock.restoreAll();
   await rm(root, { recursive: true, force: true });
 }

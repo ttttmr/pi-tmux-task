@@ -51,7 +51,7 @@ cwd=...
 
 ## Never wait in the foreground
 
-The task does the waiting; you get told. `[tmux-task notification]` uses the project's `.pi/tmux-task.json` notificationDelivery setting, read at session start or `/reload`. The default `followUp` is consumed when the current agent chain would stop, without requiring an idle gap. Optional `steer` delivers after the current tool batch, before the next model call; it does not interrupt token streaming or a running command. Both wake an idle agent. Changing timing or inspecting/cleaning a task does not acknowledge or retract queued notifications.
+The task does the waiting; you get told. `[tmux-task notification]` uses the `notificationDelivery` setting from project `.pi/tmux-task.json` over global `<Pi agent directory>/tmux-task.json` (normally `~/.pi/agent/tmux-task.json`, respecting `PI_CODING_AGENT_DIR`), read at session start or `/reload`. The default `followUp` is consumed when the current agent chain would stop, without requiring an idle gap. Optional `steer` delivers after the current tool batch, before the next model call; it does not interrupt token streaming or a running command. Both wake an idle agent. Changing timing or inspecting/cleaning a task does not acknowledge or retract queued notifications.
 
 - Never wait for progress or completion with foreground `sleep`, `capture-pane` loops, or `pane_dead` polling — not even once:
 

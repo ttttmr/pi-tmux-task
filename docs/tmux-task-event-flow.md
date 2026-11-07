@@ -239,7 +239,7 @@ Conversation-visible task event messages include:
 }
 ```
 
-The project file `ctx.cwd/.pi/tmux-task.json` selects `notificationDelivery`: `followUp` (default) or `steer`. It is read on `session_start`, including `/reload`, before the poller starts. Missing configuration uses the default; invalid/unreadable configuration warns and falls back to `followUp`. No global configuration or parent-directory lookup is used. See the [configuration examples](../README.md#notification-timing).
+The global file `<getAgentDir()>/tmux-task.json` (normally `~/.pi/agent/tmux-task.json`, respecting `PI_CODING_AGENT_DIR`) and project file `ctx.cwd/.pi/tmux-task.json` select `notificationDelivery`: `followUp` (default) or `steer`. Precedence is project > global > built-in default. Missing files and `{}` inherit; invalid/unreadable layers warn and are ignored, retaining valid settings from other layers. Both files are read on `session_start`, including `/reload`, before the poller starts. There is no parent-directory lookup. See the [configuration examples](../README.md#notification-timing).
 
 Both modes pass `triggerTurn: true` for conversation-visible events and start a turn when idle. While busy, `followUp` is consumed when the agent chain would stop (not necessarily after becoming idle); `steer` is consumed after the current tool batch, before the next model call. Neither interrupts current token streaming or a running command. `nextTurn` is intentionally not exposed. This changes delivery timing only: it does not acknowledge or retract queued/consumed messages.
 
