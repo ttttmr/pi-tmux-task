@@ -47,12 +47,13 @@ export function parseListPanes(output: string): TmuxPaneInfo[] {
     .map((line) => line.trimEnd())
     .filter(Boolean)
     .map((line) => {
-      const [windowId = "", windowName = "", paneId = "", paneDead = "0", paneDeadStatus = "", paneCurrentCommand = "", paneTitle = ""] =
+      const [windowId = "", windowName = "", paneId = "", paneDead = "0", paneDeadStatus = "", paneCurrentCommand = "", paneTitle = "", panePid = ""] =
         line.split(TMUX_FIELD_SEPARATOR);
       return {
         windowId,
         windowName,
         paneId,
+        panePid: parseOptionalNumber(panePid),
         dead: parseBooleanFlag(paneDead),
         exitCode: parseOptionalNumber(paneDeadStatus),
         currentCommand: paneCurrentCommand || undefined,

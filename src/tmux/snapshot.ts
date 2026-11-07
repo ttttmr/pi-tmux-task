@@ -40,6 +40,7 @@ function toTaskSnapshot(windowInfo: TmuxWindowInfo, paneInfo?: TmuxPaneInfo, out
     windowId: windowInfo.windowId,
     windowName: windowInfo.windowName,
     paneId: paneInfo?.paneId,
+    panePid: paneInfo?.panePid,
     paneStateKnown: paneInfo != null,
     currentCommand: resolveTaskCommand(windowInfo, paneInfo),
     taskCwd: normalizeDisplayText(windowInfo.taskCwd),

@@ -43,6 +43,7 @@ Important task fields:
 | `windowId` | Stable tmux id for the task window while it exists. |
 | `windowName` | User-facing task name. |
 | `paneId` | Primary pane id when known. |
+| `panePid` | Process id reported by tmux for the primary pane; changes on respawn even when the pane id is reused. |
 | `paneStateKnown` | Whether pane state was available from `list-panes`. |
 | `currentCommand` | Metadata command, pane title, or pane command. |
 | `taskCwd` | Helper-recorded task cwd when available. |
@@ -62,15 +63,18 @@ Existing running, dead, or bell-state tasks in the first snapshot do not produce
 
 Fast-start exception: when `tmux-task-run.sh` prints helper output, `src/index.ts` can register the task optimistically during `tool_result`. This lets a short-lived task produce an `exited` event on the next poll even if it finished before the first normal poll tick.
 
+This launch hint only seeds a window absent from the previous snapshot. An existing window keeps its observed state: the bash result can arrive after the poller has already recorded its exit. For an existing window, `tool_result` requests a serialized refresh begun after the result arrives, waiting for any pending refresh first. Genuine reruns are discovered from tmux's primary pane id/process id, rather than by replacing the diff baseline with `starting`. The footer therefore reflects a live rerun immediately after that refresh, while late output cannot reset an already observed exit.
+
 ## Event types
 
 ### `started`
 
-A new live window appears.
+A new live window or a new run in an existing window appears.
 
 Trigger:
 
 - current snapshot has a `windowId` not present in the previous snapshot;
+- or both observations identify the pane and its `paneId` or known `panePid` changed;
 - current task is not dead.
 
 Delivery:
@@ -90,6 +94,7 @@ Triggers:
 
 - a previously running task becomes `dead === true`;
 - after baseline, a newly observed task is already dead.
+- a known pane id/process id changes and the new run is already dead, including a short rerun between polls after an earlier exit.
 
 Delivery:
 
@@ -174,7 +179,7 @@ Message:
 tmux task @12 (task-name) is waiting for input: Proceed? [y/N]
 ```
 
-Repeated input notifications are deduped by `windowId + prompt`.
+Repeated input notifications are deduped by `windowId + prompt`. A new live run clears that window's input dedupe state and must establish a stable prompt in its own consecutive snapshots.
 
 ### `disappeared`
 
@@ -259,4 +264,7 @@ The `followUp` delivery mode means task events do not interrupt an active agent 
 - Dead task output that looks like a prompt cannot produce `input`.
 - Dead-window cleanup is expected cleanup, not disappearance.
 - Same task name with a different `windowId` is treated as a new task instance.
+- Reusing a window and pane is supported through `panePid`. An unchanged dead pane does not produce another exit when its helper output arrives late.
 - Multi-pane windows are best-effort and may not perfectly represent complex manual tmux layouts.
+
+This is snapshot-based observation, not an execution journal or an acknowledgement protocol. Multiple runs entirely between observations can only expose the last run. Missing pane identity, OS PID reuse with the same pane id, or tmux server recreation can prevent reliable run distinction. A late hint for a window already removed from the snapshot can still seed an optimistic entry; this fix does not introduce tombstones for deleted windows. First-observation baseline suppression remains intentional.

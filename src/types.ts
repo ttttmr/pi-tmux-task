@@ -2,6 +2,7 @@ export type TmuxTaskSnapshot = {
   windowId: string;
   windowName: string;
   paneId?: string;
+  panePid?: number;
   paneStateKnown: boolean;
   currentCommand?: string;
   taskCwd?: string;
@@ -34,6 +35,7 @@ export type TmuxPaneInfo = {
   windowId: string;
   windowName: string;
   paneId: string;
+  panePid?: number;
   dead: boolean;
   exitCode?: number;
   currentCommand?: string;

@@ -186,8 +186,10 @@ cwd=/path/to/project
 **What happens:**
 
 1. The extension looks for helper output fields: `session`, `window_id`, `task`, `cwd`.
-2. If the output belongs to the current `PI_TMUX_SESSION`, the task is registered optimistically in `previousSnapshot`.
-3. This lets very short-lived tasks still produce a later `exited` event when the poller sees the dead pane.
+2. If the output belongs to the current `PI_TMUX_SESSION` and its window is absent from `previousSnapshot`, the task is registered optimistically. This preserves immediate footer visibility and completion detection for very short tasks.
+3. For an existing window, the observed baseline is preserved and a serialized fresh tmux read discovers its current state. A changed primary pane id or process id identifies a genuine rerun, including one already dead by the next observation. Late helper output cannot reset the same observed exit to `starting`.
+
+The helper output format is unchanged. Run identity is observer-side, using tmux's `pane_id` and `pane_pid`. See [event flow](tmux-task-event-flow.md) for its snapshot-observation limits.
 
 If the bash command was unrelated to `tmux-task-run.sh`, this phase does nothing.
 
