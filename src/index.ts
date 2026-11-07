@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
+import { DEFAULT_NOTIFICATION_DELIVERY, loadDeliveryConfig, type NotificationDelivery } from "./config.ts";
 import type { TmuxSnapshot, TmuxTaskSnapshot } from "./types.ts";
 import { computeTmuxSessionName, projectSlugForPath } from "./context.ts";
 import {
@@ -307,7 +308,7 @@ async function cleanAndNotifyStaleProjectSessions(ctx: ExtensionContext, current
   if (notice) ctx.ui.notify(notice, plan.active.length > 0 ? "warning" : "info");
 }
 
-async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, session: ManagedSession, snapshot: TmuxSnapshot): Promise<void> {
+async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, session: ManagedSession, snapshot: TmuxSnapshot, delivery: NotificationDelivery): Promise<void> {
   if (runtime.activeSessionId !== session.sessionId) return;
 
   if (!snapshot.exists) {
@@ -345,7 +346,7 @@ async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, ses
           events: events.map(eventDetails),
         },
       },
-      getTmuxTaskMessageOptions(events),
+      getTmuxTaskMessageOptions(events, delivery),
     );
     return;
   }
@@ -357,7 +358,7 @@ async function handleActiveSnapshot(pi: ExtensionAPI, ctx: ExtensionContext, ses
   ctx.ui.notify(notice, level);
 }
 
-async function activateSession(pi: ExtensionAPI, ctx: ExtensionContext): Promise<ManagedSession> {
+async function activateSession(pi: ExtensionAPI, ctx: ExtensionContext, delivery: NotificationDelivery): Promise<ManagedSession> {
   const session = ensureManagedSession(ctx);
 
   stopActivePoller();
@@ -365,7 +366,7 @@ async function activateSession(pi: ExtensionAPI, ctx: ExtensionContext): Promise
   if (!session.bellHookInstalled) {
     session.bellHookInstalled = await tmuxInstallBellHook(session.sessionName);
   }
-  runtime.activePoller = startTmuxPoller(session.sessionName, 2000, (snapshot) => handleActiveSnapshot(pi, ctx, session, snapshot));
+  runtime.activePoller = startTmuxPoller(session.sessionName, 2000, (snapshot) => handleActiveSnapshot(pi, ctx, session, snapshot, delivery));
   updateTmuxTasksOverview(ctx, runtime.activePoller.getLatest() ?? session.previousSnapshot);
   return session;
 }
@@ -378,6 +379,7 @@ function registerStartedTask(ctx: ExtensionContext, startedTask: TmuxTaskSnapsho
 }
 
 export default function (pi: ExtensionAPI) {
+  let notificationDelivery = DEFAULT_NOTIFICATION_DELIVERY;
   let footerContext: ExtensionContext | undefined;
   let unsubscribeFooterClick: (() => void) | undefined;
   const connectFooterClick = (ctx: ExtensionContext) => {
@@ -399,7 +401,10 @@ export default function (pi: ExtensionAPI) {
   });
   pi.on("session_start", async (_event, ctx) => {
     connectFooterClick(ctx);
-    const session = await activateSession(pi, ctx);
+    const config = await loadDeliveryConfig(ctx.cwd);
+    notificationDelivery = config.notificationDelivery;
+    if (config.warning) ctx.ui.notify(config.warning, "warning");
+    const session = await activateSession(pi, ctx, notificationDelivery);
     await cleanAndNotifyStaleProjectSessions(ctx, session.sessionName);
   });
 
@@ -451,7 +456,7 @@ export default function (pi: ExtensionAPI) {
     description: "Show and manage tmux tasks for the current Pi session",
     handler: async (args, ctx) => {
       const command = args.trim();
-      const session = await activateSession(pi, ctx);
+      const session = await activateSession(pi, ctx, notificationDelivery);
       const sessionName = session.sessionName;
       const refresh = async () => (runtime.activePoller ? await runtime.activePoller.refreshNow() : await collectTmuxSnapshot(sessionName));
       const snapshot = await refresh();

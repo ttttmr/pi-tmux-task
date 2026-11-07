@@ -21,34 +21,28 @@ cleanup_session() {
   tmux kill-session -t "$name" >/dev/null 2>&1 || true
 }
 
-save_tmux_global_env() {
-  tmux show-environment -g "$1" 2>/dev/null || true
-}
-
-restore_tmux_global_env() {
-  local name="$1"
-  local saved="$2"
-  if [[ "$saved" == "$name="* ]]; then
-    tmux set-environment -g "$name" "${saved#*=}" >/dev/null
-  else
-    tmux set-environment -gu "$name" >/dev/null 2>&1 || true
-  fi
-}
-
 require_tmux
 
-old_global_pi_session_id="$(save_tmux_global_env PI_SESSION_ID)"
-old_global_pi_tmux_session="$(save_tmux_global_env PI_TMUX_SESSION)"
+# Keep both sessions and global-environment probes off the user's tmux server.
+test_dir="$(mktemp -d "$ROOT_DIR/.tmux-test-XXXXXX")"
+tmux_binary="$(command -v tmux)"
+mkdir "$test_dir/bin"
+export PI_TMUX_TEST_SOCKET="$test_dir/socket"
+export PI_TMUX_TEST_BINARY="$tmux_binary"
+cat > "$test_dir/bin/tmux" <<'WRAPPER'
+#!/usr/bin/env bash
+exec "$PI_TMUX_TEST_BINARY" -S "$PI_TMUX_TEST_SOCKET" "$@"
+WRAPPER
+chmod +x "$test_dir/bin/tmux"
+export PATH="$test_dir/bin:$PATH"
+cleanup_all() {
+  tmux kill-server >/dev/null 2>&1 || true
+  rm -rf "$test_dir"
+}
+trap cleanup_all EXIT
 
 session_id="019e4988-b257-7be4-a6f7-b945f8fb7d36"
 session_name="pi-example-project-${session_id}"
-cleanup_session "$session_name"
-cleanup_all() {
-  cleanup_session "$session_name"
-  restore_tmux_global_env PI_SESSION_ID "$old_global_pi_session_id"
-  restore_tmux_global_env PI_TMUX_SESSION "$old_global_pi_tmux_session"
-}
-trap cleanup_all EXIT
 
 if tmux new-session -d -s "$session_name" -n shell; then
   actual_name="$(tmux list-sessions -F '#{session_name}' | grep -Fx "$session_name" || true)"
@@ -75,15 +69,15 @@ preview="$(tmux capture-pane -p -t "$window_id" -S -20)"
 [[ "$preview" == *"hello from integration test"* ]] || fail "capture-pane should show command output"
 pass "capture-pane works"
 
-if env -u PI_TMUX_SESSION "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" helper-run -- 'printf "should fail without session\\n"' >/tmp/pi-tmux-task-run-no-session.out 2>/tmp/pi-tmux-task-run-no-session.err; then
+if env -u PI_TMUX_SESSION "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" helper-run -- 'printf "should fail without session\\n"' >"$test_dir/no-session.out" 2>"$test_dir/no-session.err"; then
   fail "run helper should require PI_TMUX_SESSION"
 fi
-if ! grep -q 'PI_TMUX_SESSION is required' /tmp/pi-tmux-task-run-no-session.err; then
+if ! grep -q 'PI_TMUX_SESSION is required' "$test_dir/no-session.err"; then
   fail "run helper should explain missing PI_TMUX_SESSION"
 fi
 pass "tmux-task-run helper requires explicit session env"
 
-helper_cwd="/tmp/pi-tmux-task-helper-cwd"
+helper_cwd="$test_dir/helper-cwd"
 mkdir -p "$helper_cwd"
 tmux set-environment -g PI_SESSION_ID stale-pi-session >/dev/null
 tmux set-environment -g PI_TMUX_SESSION stale-tmux-session >/dev/null
@@ -96,7 +90,7 @@ helper_run_window_id="$(tmux list-windows -t "$session_name" -F '#{window_name}|
 [[ -n "$helper_run_window_id" ]] || fail "run helper should create task window"
 helper_run_preview="$(tmux capture-pane -p -t "$helper_run_window_id" -S -20)"
 helper_run_preview_flat="$(printf '%s' "$helper_run_preview" | tr -d '\n')"
-[[ "$helper_run_preview" == *"from helper run cwd=$helper_cwd"* ]] || fail "run helper should execute command in configured cwd"
+[[ "$helper_run_preview_flat" == *"from helper run cwd=$helper_cwd"* ]] || fail "run helper should execute command in configured cwd"
 [[ "$helper_run_preview_flat" == *"task env session=$session_name pi=unset"* ]] || fail "run helper should pass only the effective PI_TMUX_SESSION into task panes"
 window_task_command="$(tmux list-windows -t "$session_name" -F '#{window_name}|#{@pi_task_command}' | awk -F '|' '$1=="helper-run"{print $2; exit}')"
 [[ "$window_task_command" == *'printf "from helper run cwd=%s'* ]] || fail "run helper should store display command in tmux window metadata"
@@ -124,10 +118,10 @@ EOF
 [[ "$wrapper_probe" == "$helper_run_window_id|$helper_cwd|pane|dead|0" ]] || fail "tmux command wrappers should parse all session panes, including non-active dead panes, under C locale"
 pass "tmux command wrappers parse session-wide panes under C locale"
 
-if PI_TMUX_SESSION="$session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" 'bad name' -- 'printf bad' >/tmp/pi-tmux-task-run-bad-name.out 2>/tmp/pi-tmux-task-run-bad-name.err; then
+if PI_TMUX_SESSION="$session_name" "$ROOT_DIR/skills/tmux-task-manager/tmux-task-run.sh" 'bad name' -- 'printf bad' >"$test_dir/bad-name.out" 2>"$test_dir/bad-name.err"; then
   fail "run helper should reject invalid task names"
 fi
-if ! grep -q 'invalid task name' /tmp/pi-tmux-task-run-bad-name.err; then
+if ! grep -q 'invalid task name' "$test_dir/bad-name.err"; then
   fail "run helper should explain invalid task names"
 fi
 pass "tmux-task-run helper validates task names"

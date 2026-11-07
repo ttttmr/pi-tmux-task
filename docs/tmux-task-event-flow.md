@@ -96,7 +96,7 @@ Delivery:
 - UI status: updated
 - UI notice: no
 - conversation message: yes
-- agent turn: yes, as `followUp`
+- agent turn: yes, configured `followUp` (default) or `steer`
 
 Messages:
 
@@ -123,7 +123,7 @@ Delivery:
 - UI status: updated
 - UI notice: no
 - conversation message: yes
-- agent turn: yes, as `followUp`
+- agent turn: yes, configured `followUp` (default) or `steer`
 
 Message:
 
@@ -166,7 +166,7 @@ Delivery:
 - UI status: updated
 - UI notice: no
 - conversation message: yes
-- agent turn: yes, as `followUp`
+- agent turn: yes, configured `followUp` (default) or `steer`
 
 Message:
 
@@ -191,7 +191,7 @@ Delivery:
 - UI status: updated
 - UI notice: no
 - conversation message: yes
-- agent turn: yes, as `followUp`
+- agent turn: yes, configured `followUp` (default) or `steer`
 
 Messages:
 
@@ -218,7 +218,7 @@ Delivery matrix:
 | Event set | Delivery | Triggers agent turn? |
 |---|---|---|
 | only `started` | `ctx.ui.notify(...)` | No |
-| `exited` / `notify` / `input` / `disappeared` | `pi.sendMessage(...)` with `[tmux-task notification]` | Yes, as `followUp` |
+| `exited` / `notify` / `input` / `disappeared` | `pi.sendMessage(...)` with `[tmux-task notification]` | Yes, configured `followUp` (default) or `steer` |
 | historical active sessions at startup | `ctx.ui.notify(...)`, enriched with the Pi session title stored in tmux (`@pi_session_title`) when available | No |
 | stale inactive cleanup at startup | `ctx.ui.notify(...)` | No |
 | `/tmux-tasks` TUI actions | panel UI or `ctx.ui.notify(...)` | No |
@@ -239,17 +239,19 @@ Conversation-visible task event messages include:
 }
 ```
 
-The `followUp` delivery mode means task events do not interrupt an active agent turn; they are handled after the current work finishes.
+The global file `<getAgentDir()>/tmux-task.json` (normally `~/.pi/agent/tmux-task.json`, respecting `PI_CODING_AGENT_DIR`) and project file `ctx.cwd/.pi/tmux-task.json` select `notificationDelivery`: `followUp` (default) or `steer`. Precedence is project > global > built-in default. Missing files and `{}` inherit; invalid/unreadable layers warn and are ignored, retaining valid settings from other layers. Both files are read on `session_start`, including `/reload`, before the poller starts. There is no parent-directory lookup. See the [configuration examples](../README.md#notification-timing).
+
+Both modes pass `triggerTurn: true` for conversation-visible events and start a turn when idle. While busy, `followUp` is consumed when the agent chain would stop (not necessarily after becoming idle); `steer` is consumed after the current tool batch, before the next model call. Neither interrupts current token streaming or a running command. `nextTurn` is intentionally not exposed. This changes delivery timing only: it does not acknowledge or retract queued/consumed messages.
 
 ## Event matrix
 
 | Event | Trigger summary | UI status | UI notice | Conversation message | Agent turn |
 |---|---|---:|---:|---:|---:|
 | `started` | new live `windowId` | yes | yes | no | no |
-| `exited` | task becomes dead | yes | no | yes | yes, follow-up |
-| `notify` | bell count/flag changes | yes | no | yes | yes, follow-up |
-| `input` | stable prompt across polls | yes | no | yes | yes, follow-up |
-| `disappeared` | live window disappears | yes | no | yes | yes, follow-up |
+| `exited` | task becomes dead | yes | no | yes | yes, configured delivery |
+| `notify` | bell count/flag changes | yes | no | yes | yes, configured delivery |
+| `input` | stable prompt across polls | yes | no | yes | yes, configured delivery |
+| `disappeared` | live window disappears | yes | no | yes | yes, configured delivery |
 
 ## Important edge cases
 
